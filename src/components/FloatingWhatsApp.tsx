@@ -51,6 +51,7 @@ export function FloatingWhatsApp() {
   const [inputMessage, setInputMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [visitorName, setVisitorName] = useState('Sister');
+  const [visitorUserId, setVisitorUserId] = useState<string | null>(null);
   const [visitorPhone, setVisitorPhone] = useState('+254700000000');
   const [conversationState, setConversationState] = useState('DISCOVERY');
   const [messages, setMessages] = useState<ChatMessage[]>([DEFAULT_WELCOME_MESSAGE]);
@@ -71,8 +72,9 @@ export function FloatingWhatsApp() {
       const supabase = createClient();
       supabase.auth.getUser().then(({ data: { user } }) => {
         if (user) {
-          const name = user.user_metadata?.name || user.email?.split('@')[0] || 'Member';
+          const name = user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Member';
           setVisitorName(name);
+          setVisitorUserId(user.id);
           if (user.user_metadata?.phone) {
             setVisitorPhone(user.user_metadata.phone);
           } else {
@@ -171,7 +173,8 @@ export function FloatingWhatsApp() {
           from: visitorPhone,
           name: visitorName,
           text: body,
-          buttonId
+          buttonId,
+          userId: visitorUserId
         })
       });
 
@@ -220,8 +223,16 @@ export function FloatingWhatsApp() {
     const parts = content.split('\n');
 
     return parts.map((line, lineIdx) => {
-      const isInternalLink = line.includes('/register') || line.includes('/checkout') || line.includes('/dashboard');
+      const isInternalLink =
+        line.includes('http') ||
+        line.includes('/register') ||
+        line.includes('/checkout') ||
+        line.includes('/dashboard');
       const isWhatsAppLink = line.includes('wa.me');
+
+      if (!line.trim()) {
+        return <span key={lineIdx} className="block h-2" />;
+      }
 
       if (isWhatsAppLink) {
         return (
@@ -280,13 +291,59 @@ export function FloatingWhatsApp() {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end print:hidden">
-      {/* Expanded Interactive Chatbot Window */}
+    <>
+      {/* Floating Launcher Button */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2 pointer-events-auto print:hidden">
+        {/* Floating Bubble Pill for Returning Visitors */}
+        {!isOpen && (
+          <div
+            onClick={() => setIsOpen(true)}
+            className="cursor-pointer group flex items-center gap-2.5 bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-full shadow-lg border border-emerald-100 hover:border-emerald-300 transition-all transform hover:-translate-y-0.5 duration-200"
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <p className="text-xs font-medium text-stone-800 flex items-center gap-1">
+              <span>Chat with Coach</span>
+              <span className="font-serif italic text-rose-900 font-bold">Zipporah</span>
+            </p>
+            <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-800 text-[10px] font-bold">
+              1
+            </div>
+          </div>
+        )}
+
+        {/* WhatsApp Icon Circle */}
+        <button
+          onClick={() => {
+            setIsOpen(prev => !prev);
+            setIsMinimized(false);
+          }}
+          aria-label="Open Becoming Her WhatsApp Assistant"
+          className={`relative w-14 h-14 rounded-full flex items-center justify-center text-white shadow-xl transition-all duration-300 hover:scale-105 active:scale-95 ${
+            isOpen ? 'bg-stone-800 hover:bg-stone-900' : 'bg-[#25D366] hover:bg-[#20bd5a]'
+          }`}
+        >
+          {isOpen ? (
+            <X className="w-6 h-6 transition-transform duration-200 rotate-0" />
+          ) : (
+            <>
+              <MessageCircle className="w-7 h-7" />
+              <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-4 w-4 bg-rose-600 text-[9px] font-bold text-white items-center justify-center">
+                  🌸
+                </span>
+              </span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Main Chat Modal Window */}
       {isOpen && (
         <div
-          className={`mb-3 w-[350px] sm:w-[390px] ${
-            isMinimized ? 'h-16' : 'h-[580px] sm:h-[620px]'
-          } rounded-[32px] bg-stone-900 shadow-2xl border-4 border-stone-800 flex flex-col overflow-hidden transition-all duration-300 animate-in fade-in slide-in-from-bottom-6`}
+          className={`fixed bottom-24 right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-[380px] md:w-[400px] z-50 transition-all duration-300 transform origin-bottom-right ${
+            isMinimized ? 'h-14 overflow-hidden rounded-2xl' : 'h-[580px] max-h-[82vh] rounded-3xl'
+          } bg-stone-100 shadow-2xl border border-stone-200/80 flex flex-col overflow-hidden`}
         >
           {/* WhatsApp Header */}
           <div className="bg-[#075E54] text-white px-4 py-3 flex items-center justify-between shadow z-30 select-none">
@@ -304,7 +361,7 @@ export function FloatingWhatsApp() {
                 </h4>
                 <p className="text-[10px] text-emerald-100 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
-                  Online • AI Companion
+                  {visitorUserId ? `Member: ${visitorName}` : 'Online • AI Companion'}
                 </p>
               </div>
             </div>
@@ -328,16 +385,16 @@ export function FloatingWhatsApp() {
               </button>
 
               <button
-                onClick={() => setIsMinimized(!isMinimized)}
+                onClick={() => setIsMinimized(prev => !prev)}
                 title={isMinimized ? 'Expand' : 'Minimize'}
                 className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/90 hover:text-white transition"
               >
-                <ChevronDown className={`w-4 h-4 transition-transform ${isMinimized ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-4 h-4 transform transition-transform ${isMinimized ? 'rotate-180' : ''}`} />
               </button>
 
               <button
                 onClick={() => setIsOpen(false)}
-                title="Close Chat"
+                title="Close"
                 className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/90 hover:text-white transition"
               >
                 <X className="w-4 h-4" />
@@ -345,16 +402,27 @@ export function FloatingWhatsApp() {
             </div>
           </div>
 
-          {/* Main Chat Body */}
+          {/* Chat Body & Input Container */}
           {!isMinimized && (
-            <div className="flex-1 flex flex-col bg-[#ECE5DD] overflow-hidden relative">
-              {/* Privacy Notice Banner */}
-              <div className="p-2 bg-[#FFF4C7] border-b border-amber-200/50 text-center text-[10px] text-stone-700 shadow-xs">
-                🔒 Private & confidential AI coaching session with Becoming Her.
-              </div>
+            <>
+              {/* WhatsApp Wallpaper Messages Area */}
+              <div
+                className="flex-1 p-3.5 overflow-y-auto space-y-3.5"
+                style={{
+                  backgroundColor: '#ECE5DD',
+                  backgroundImage: `radial-gradient(#d4c8be 1px, transparent 1px)`,
+                  backgroundSize: '16px 16px'
+                }}
+              >
+                {/* Security / Encryption Notice */}
+                <div className="flex justify-center my-1">
+                  <div className="bg-[#FFF4C7] text-[#554000] text-[10px] px-3 py-1 rounded-lg text-center max-w-[90%] shadow-2xs border border-[#FFE28A]/60 flex items-center gap-1.5 leading-snug">
+                    <Sparkles className="w-3 h-3 shrink-0 text-amber-700" />
+                    <span>Confidential coaching sanctuary grounded in Becoming Her transformation modules.</span>
+                  </div>
+                </div>
 
-              {/* Messages Container */}
-              <div className="flex-1 overflow-y-auto p-3.5 space-y-3">
+                {/* Messages Feed */}
                 {messages.map((msg) => (
                   <div
                     key={msg.id}
@@ -363,17 +431,19 @@ export function FloatingWhatsApp() {
                     }`}
                   >
                     <div
-                      className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed shadow-xs ${
+                      className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs shadow-xs transition-all ${
                         msg.senderType === 'user'
                           ? 'bg-[#E7FFDB] text-stone-900 rounded-tr-none'
-                          : 'bg-white text-stone-800 rounded-tl-none border border-stone-200/60'
+                          : 'bg-white text-stone-900 rounded-tl-none border border-stone-200/60'
                       }`}
                     >
-                      {renderMessageContent(msg.body)}
+                      <div className="text-xs leading-relaxed space-y-1">
+                        {renderMessageContent(msg.body)}
+                      </div>
 
-                      {/* Interactive Buttons (e.g. Guided, Custom, 1-on-1, etc.) */}
+                      {/* Interactive Buttons rendered on message */}
                       {msg.metadata?.buttons && msg.metadata.buttons.length > 0 && (
-                        <div className="mt-2.5 pt-2 border-t border-stone-100 flex flex-col gap-1.5">
+                        <div className="mt-2.5 pt-2 border-t border-stone-200/70 flex flex-col gap-1.5">
                           {msg.metadata.buttons.map((btn) => (
                             <button
                               key={btn.id}
@@ -409,38 +479,85 @@ export function FloatingWhatsApp() {
 
               {/* Quick Prompt Carousel */}
               <div className="px-3 py-1.5 bg-white/80 backdrop-blur-xs border-t border-stone-200/80 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-                <button
-                  onClick={() =>
-                    handleSendMessage('What coaching programmes do you offer and what are the prices?')
-                  }
-                  className="shrink-0 px-2.5 py-1 rounded-full bg-stone-100 hover:bg-emerald-50 hover:text-emerald-800 text-[10px] font-medium text-stone-600 border border-stone-200 transition"
-                >
-                  ✨ View Pricing
-                </button>
-                <button
-                  onClick={() =>
-                    handleSendMessage('I feel overwhelmed with where I am in life and need clarity.')
-                  }
-                  className="shrink-0 px-2.5 py-1 rounded-full bg-stone-100 hover:bg-emerald-50 hover:text-emerald-800 text-[10px] font-medium text-stone-600 border border-stone-200 transition"
-                >
-                  🌿 Feeling Overwhelmed
-                </button>
-                <button
-                  onClick={() =>
-                    handleSendMessage('I want to enroll in the Guided Digital Coaching programme.')
-                  }
-                  className="shrink-0 px-2.5 py-1 rounded-full bg-stone-100 hover:bg-emerald-50 hover:text-emerald-800 text-[10px] font-medium text-stone-600 border border-stone-200 transition"
-                >
-                  🛒 Guided (KES 1,000)
-                </button>
-                <button
-                  onClick={() =>
-                    handleSendMessage('Can I please speak with Coach Zipporah or a human agent?')
-                  }
-                  className="shrink-0 px-2.5 py-1 rounded-full bg-stone-100 hover:bg-emerald-50 hover:text-emerald-800 text-[10px] font-medium text-stone-600 border border-stone-200 transition"
-                >
-                  👤 Talk to Human
-                </button>
+                {visitorUserId ? (
+                  <>
+                    <button
+                      onClick={() =>
+                        handleSendMessage('What did I write in my reflections?', 'btn_my_reflections')
+                      }
+                      className="shrink-0 px-2.5 py-1 rounded-full bg-rose-50 hover:bg-rose-100 text-[10px] font-medium text-rose-900 border border-rose-200 transition flex items-center gap-1"
+                    >
+                      💭 My Reflections
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleSendMessage('Give me a reflection question to answer right now.', 'btn_reflect_prompt')
+                      }
+                      className="shrink-0 px-2.5 py-1 rounded-full bg-amber-50 hover:bg-amber-100 text-[10px] font-medium text-amber-900 border border-amber-200 transition flex items-center gap-1"
+                    >
+                      ✍️ Reflect Now
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleSendMessage('What are my active goals and progress?', 'btn_view_goals')
+                      }
+                      className="shrink-0 px-2.5 py-1 rounded-full bg-emerald-50 hover:bg-emerald-100 text-[10px] font-medium text-emerald-900 border border-emerald-200 transition flex items-center gap-1"
+                    >
+                      🎯 My Goals
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleSendMessage('What was my challenge in my onboarding questionnaire?')
+                      }
+                      className="shrink-0 px-2.5 py-1 rounded-full bg-stone-100 hover:bg-stone-200 text-[10px] font-medium text-stone-700 border border-stone-200 transition"
+                    >
+                      📋 My Assessment
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleSendMessage('Can I please speak with Coach Zipporah or a human agent?', 'btn_talk_human')
+                      }
+                      className="shrink-0 px-2.5 py-1 rounded-full bg-stone-100 hover:bg-stone-200 text-[10px] font-medium text-stone-700 border border-stone-200 transition"
+                    >
+                      👤 Talk to Coach
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() =>
+                        handleSendMessage('What coaching programmes do you offer and what are the prices?')
+                      }
+                      className="shrink-0 px-2.5 py-1 rounded-full bg-stone-100 hover:bg-emerald-50 hover:text-emerald-800 text-[10px] font-medium text-stone-600 border border-stone-200 transition"
+                    >
+                      ✨ View Pricing
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleSendMessage('I feel overwhelmed with where I am in life and need clarity.')
+                      }
+                      className="shrink-0 px-2.5 py-1 rounded-full bg-stone-100 hover:bg-emerald-50 hover:text-emerald-800 text-[10px] font-medium text-stone-600 border border-stone-200 transition"
+                    >
+                      🌿 Feeling Overwhelmed
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleSendMessage('I want to enroll in the Guided Digital Coaching programme.')
+                      }
+                      className="shrink-0 px-2.5 py-1 rounded-full bg-stone-100 hover:bg-emerald-50 hover:text-emerald-800 text-[10px] font-medium text-stone-600 border border-stone-200 transition"
+                    >
+                      🛒 Guided (KES 1,000)
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleSendMessage('Can I please speak with Coach Zipporah or a human agent?')
+                      }
+                      className="shrink-0 px-2.5 py-1 rounded-full bg-stone-100 hover:bg-emerald-50 hover:text-emerald-800 text-[10px] font-medium text-stone-600 border border-stone-200 transition"
+                    >
+                      👤 Talk to Human
+                    </button>
+                  </>
+                )}
               </div>
 
               {/* Chat Input Bar */}
@@ -462,33 +579,10 @@ export function FloatingWhatsApp() {
                   <Send className="w-4 h-4" />
                 </button>
               </div>
-            </div>
+            </>
           )}
         </div>
       )}
-
-      {/* Floating Trigger Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="group relative flex items-center gap-2.5 py-3 px-4 rounded-full bg-[#25D366] hover:bg-[#20bd5a] text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95 border-2 border-white/60"
-        aria-label="Open Becoming Her AI Coaching Chatbot"
-      >
-        {/* Ambient pulse glow */}
-        <span className="absolute -inset-1 rounded-full bg-emerald-400/30 blur-sm group-hover:bg-emerald-400/50 transition opacity-75 animate-pulse" />
-
-        {/* WhatsApp Icon */}
-        <div className="relative flex items-center justify-center">
-          <MessageCircle className="w-6 h-6 fill-white stroke-none drop-shadow" />
-          {!isOpen && (
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-rose-600 rounded-full border-2 border-white" />
-          )}
-        </div>
-
-        {/* Dynamic Label */}
-        <span className="relative font-semibold text-xs tracking-wide hidden sm:inline-block drop-shadow-xs">
-          {isOpen ? 'Close Chat' : 'Chat with Coach'}
-        </span>
-      </button>
-    </div>
+    </>
   );
 }

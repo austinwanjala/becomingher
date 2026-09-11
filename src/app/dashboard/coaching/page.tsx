@@ -141,6 +141,21 @@ How is your spirit feeling today, and what area of your personal elevation would
   const handleSaveOnboarding = (e: React.FormEvent) => {
     e.preventDefault();
     setOnboardingSaved(true);
+    
+    // Save to centralized store so AI chatbot and WhatsApp bot can answer questions on it in real time
+    store.questionnaires[customerId] = {
+      user_id: customerId,
+      life_area: qAnswers.life_area,
+      challenge: qAnswers.challenge,
+      current_challenge: qAnswers.challenge,
+      goals: qAnswers.goals,
+      current_goals: qAnswers.goals,
+      support_pref: qAnswers.support_pref,
+      support_preference: qAnswers.support_pref,
+      completed_at: new Date().toISOString()
+    };
+    store.questionnaires['cust-demo-01'] = store.questionnaires[customerId];
+
     setTimeout(() => {
       setShowOnboardingModal(false);
       setMessages((prev) => [

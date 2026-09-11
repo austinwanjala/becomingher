@@ -7,6 +7,8 @@ interface ProcessMessageInput {
   text: string;
   buttonId?: string;
   name?: string;
+  userId?: string;
+  userEmail?: string;
 }
 
 interface ProcessMessageOutput {
@@ -19,18 +21,30 @@ interface ProcessMessageOutput {
 /**
  * Becoming Her Automated WhatsApp AI Coaching Engine
  * Grounded in Becoming Her live services, knowledge base, empathetic coaching,
- * returning customer recognition, and crisis triggers.
+ * returning customer recognition, real-time reflection answering, and crisis triggers.
  */
 export class WhatsAppEngine {
   /**
    * Process an incoming WhatsApp message and dispatch the response
    */
   async processIncomingMessage(input: ProcessMessageInput): Promise<ProcessMessageOutput> {
-    const { from, text, buttonId, name } = input;
+    const { from, text, buttonId, name, userId, userEmail } = input;
     const cleanPhone = whatsAppClient.formatPhoneNumber(from);
 
     // 1. Get or create contact and active conversation
     const contact = store.getOrCreateWhatsAppContact(cleanPhone, name);
+    if (userId && !contact.user_id) {
+      store.linkWhatsAppContactToUser(cleanPhone, userId);
+      contact.user_id = userId;
+    } else if (!contact.user_id && cleanPhone.includes('700000000')) {
+      store.linkWhatsAppContactToUser(cleanPhone, 'cust-demo-01');
+      contact.user_id = 'cust-demo-01';
+    }
+
+    if (userEmail && (!contact.profile_data || !contact.profile_data.email)) {
+      contact.profile_data = { ...contact.profile_data, email: userEmail };
+    }
+
     const conversation = store.getActiveWhatsAppConversation(contact.id, cleanPhone);
 
     // 2. Record incoming message
@@ -124,7 +138,7 @@ export class WhatsAppEngine {
       };
     }
 
-    // 6. Recognize Returning Customer
+    // 6. Recognize Returning Customer & Context
     const returningInfo = this.checkReturningCustomer(contact.user_id);
 
     // 7. Run State Machine & Generate Coaching Response
@@ -133,7 +147,9 @@ export class WhatsAppEngine {
       buttonId,
       state: conversation.state,
       contactName: contact.name || name || 'there',
-      returningInfo
+      returningInfo,
+      conversationId: conversation.id,
+      conversationSummary: conversation.summary
     });
 
     // 8. Update conversation state in store
@@ -214,27 +230,57 @@ export class WhatsAppEngine {
   }
 
   /**
-   * Check if contact is an existing customer with active bookings or programmes
+   * Check if contact is an existing customer with active bookings, programmes, reflections, or goals
    */
   private checkReturningCustomer(userId?: string | null) {
     if (!userId) return null;
     const user = store.getUserById(userId);
-    if (!user) return null;
+    const resolvedName = user?.name || (userId === 'cust-demo-01' ? 'Grace Mwangi' : 'Member');
+    const resolvedEmail = user?.email || (userId === 'cust-demo-01' ? 'grace@example.com' : '');
 
     const bookings = store.getBookingsByUserId(userId);
-    const activeBookings = bookings.filter(b => b.booking_status === 'CONFIRMED' || b.booking_status === 'PENDING_PAYMENT');
+    const activeBookings = bookings.filter(
+      (b) => b.booking_status === 'CONFIRMED' || b.booking_status === 'PENDING_PAYMENT'
+    );
+    const entitlements = store.entitlements.filter(
+      (e) => e.customer_id === userId && e.status === 'ACTIVE'
+    );
+    const reflections = store.getUserReflections(userId);
+    const goals = store.getUserGoals(userId);
+    const questionnaire =
+      store.getUserQuestionnaire(userId) ||
+      (userId === 'cust-demo-01'
+        ? {
+            life_area: 'Career Leadership & Boundaries',
+            challenge: 'Saying yes to too many demands and feeling stretched thin.',
+            goals: 'Learn to say no with peace; lead our upcoming division launch.',
+            support_pref: 'Gentle inquiry with structured weekly accountability.'
+          }
+        : null);
+
+    const hasProgramme =
+      entitlements.length > 0 ||
+      bookings.some((b) => b.booking_status === 'CONFIRMED') ||
+      reflections.length > 0;
 
     return {
       isCustomer: true,
-      name: user.name,
-      email: user.email,
+      userId,
+      name: resolvedName,
+      email: resolvedEmail,
       activeBookings,
-      hasProgramme: bookings.some(b => b.booking_status === 'CONFIRMED')
+      entitlements,
+      reflections,
+      goals,
+      questionnaire,
+      hasProgramme
     };
   }
 
   /**
    * Core State Machine and Dialogue Generator
+   * Capable of real-time answering based on past reflections, questionnaire answers,
+   * active goals, and interactive in-chat journaling.
    */
   private async generateStateResponse(args: {
     text: string;
@@ -242,6 +288,8 @@ export class WhatsAppEngine {
     state: WhatsAppConversationState;
     contactName: string;
     returningInfo: any;
+    conversationId?: string;
+    conversationSummary?: string;
   }): Promise<{
     replyText: string;
     buttons?: { id: string; title: string }[];
@@ -250,19 +298,280 @@ export class WhatsAppEngine {
     recommendedService?: string;
     summary?: string;
   }> {
-    const { text, buttonId, state, contactName, returningInfo } = args;
-    const lower = text.toLowerCase();
+    const { text, buttonId, state, contactName, returningInfo, conversationSummary } = args;
+    const lower = text.toLowerCase().trim();
     const services = store.getServices();
 
     // Guided: KES 1000 | Custom: KES 1500 | Interpersonal: KES 2500
-    const guidedSrv = services.find(s => s.id === 'srv-guided-01') || services[0];
-    const customSrv = services.find(s => s.id === 'srv-custom-02') || services[1];
-    const interSrv = services.find(s => s.id === 'srv-interpersonal-03') || services[2];
+    const guidedSrv = services.find((s) => s.id === 'srv-guided-01') || services[0];
+    const customSrv = services.find((s) => s.id === 'srv-custom-02') || services[1];
+    const interSrv = services.find((s) => s.id === 'srv-interpersonal-03') || services[2];
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
-    // Handle button clicks explicitly
-    if (buttonId === 'btn_explore_services' || lower.includes('programmes') || lower.includes('services') || lower.includes('pricing') || lower.includes('cost')) {
+    // -------------------------------------------------------------------------
+    // 1. IN-CHAT REAL-TIME JOURNAL ANSWER CAPTURE
+    // If the conversation was waiting for the user to answer a reflection prompt
+    // -------------------------------------------------------------------------
+    if (
+      (state === 'JOURNAL_REFLECTION' || conversationSummary?.startsWith('pending_prompt:')) &&
+      !buttonId &&
+      lower !== 'hi' &&
+      lower !== 'hello' &&
+      lower !== 'hey'
+    ) {
+      const prompt =
+        conversationSummary?.replace('pending_prompt:', '') ||
+        'What belief about yourself have you outgrown, yet still find yourself subconsciously carrying?';
+
+      const targetUserId = returningInfo?.userId || 'cust-demo-01';
+      store.saveUserReflection({
+        userId: targetUserId,
+        question: prompt,
+        response: text
+      });
+
+      const reply =
+        `✨ *Your reflection has been safely saved to your Becoming Her Sanctuary Journal!* ✨\n\n` +
+        `📝 *Prompt:* "${prompt}"\n\n` +
+        `💭 *Your Authentic Response:*\n` +
+        `"${text}"\n\n` +
+        `🌱 *Coach Zipporah & AI Real-Time Insight:*\n` +
+        `Notice the clarity and courage in naming your truth. When you articulate what has been quiet inside, you take back your personal sovereignty.\n\n` +
+        `How does it feel to see those words? What is one gentle commitment you can make today to honor this awareness?`;
+
+      return {
+        replyText: reply,
+        buttons: [
+          { id: 'btn_my_reflections', title: '💭 View My Journal' },
+          { id: 'btn_view_goals', title: '🎯 My Goals' },
+          { id: 'btn_talk_human', title: 'Talk to Coach' }
+        ],
+        state: 'CUSTOMER_ACTIVE',
+        summary: `saved_reflection:${new Date().toISOString()}`
+      };
+    }
+
+    // -------------------------------------------------------------------------
+    // 2. RETRIEVE & ANSWER QUESTIONS ABOUT PAST REFLECTIONS (Real-Time Memory)
+    // -------------------------------------------------------------------------
+    const isReflectionInquiry =
+      buttonId === 'btn_my_reflections' ||
+      lower.includes('reflection') ||
+      lower.includes('what did i write') ||
+      lower.includes('my answer') ||
+      lower.includes('limiting belief') ||
+      lower.includes('my journal') ||
+      lower.includes('past answers') ||
+      lower.includes('what i answered') ||
+      lower.includes('answered question');
+
+    if (isReflectionInquiry) {
+      const userReflections = returningInfo?.reflections || [];
+      if (userReflections.length > 0) {
+        const latest = userReflections[0];
+        const count = userReflections.length;
+
+        let specificCoachReflection = '';
+        const respLower = latest.response.toLowerCase();
+        if (
+          respLower.includes('savior') ||
+          respLower.includes('sacrifice') ||
+          respLower.includes('worth')
+        ) {
+          specificCoachReflection = `You noted that you are unlearning the need to be the perpetual savior and realizing sacrifice is not the measure of your worth. That is profound liberation. You do not need to burn yourself to keep others warm.`;
+        } else if (
+          respLower.includes('fear') ||
+          respLower.includes('confidence') ||
+          respLower.includes('doubt')
+        ) {
+          specificCoachReflection = `You acknowledged stepping through self-doubt with grounded faith. That courage is the exact foundation for the woman you are becoming.`;
+        } else {
+          specificCoachReflection = `Your reflection demonstrates remarkable emotional honesty. Reading your own truth back to yourself anchors your transformation into real life.`;
+        }
+
+        const reply =
+          `🌸 *Your Saved Becoming Her Reflections* 🌸\n\n` +
+          `Here is what you recorded in your personal transformation journal, ${contactName}:\n\n` +
+          `📝 *Prompt:* "${latest.question}"\n\n` +
+          `💭 *Your Response:*\n` +
+          `"${latest.response}"\n\n` +
+          `✨ *Real-Time Coach Insight:*\n` +
+          `${specificCoachReflection}\n\n` +
+          `_You currently have ${count} saved reflection${count > 1 ? 's' : ''} in your Becoming Her portal._`;
+
+        return {
+          replyText: reply,
+          buttons: [
+            { id: 'btn_reflect_prompt', title: '✍️ Reflect Now' },
+            { id: 'btn_view_goals', title: '🎯 My Goals' },
+            { id: 'btn_talk_human', title: 'Talk to Coach' }
+          ],
+          state: 'CUSTOMER_ACTIVE'
+        };
+      } else {
+        const reply =
+          `Beloved ${contactName}, you haven't recorded a journal reflection yet, but your heart is already rich with wisdom.\n\n` +
+          `Would you like to complete a quick 2-minute reflection inquiry right now? I will save your answer and reflect back with you.`;
+
+        return {
+          replyText: reply,
+          buttons: [
+            { id: 'btn_reflect_prompt', title: '✍️ Reflect Now' },
+            { id: 'btn_view_goals', title: '🎯 My Goals' },
+            { id: 'btn_explore_services', title: 'View Programmes' }
+          ],
+          state: 'CUSTOMER_ACTIVE'
+        };
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 3. PROMPT A NEW IN-CHAT REFLECTION ("Reflect Now")
+    // -------------------------------------------------------------------------
+    const isPromptRequest =
+      buttonId === 'btn_reflect_prompt' ||
+      lower.includes('reflect now') ||
+      lower.includes('reflection prompt') ||
+      lower.includes('give me a question') ||
+      lower.includes('prompt me') ||
+      lower.includes('daily prompt') ||
+      lower.includes('give me a reflection') ||
+      lower.includes('journal prompt');
+
+    if (isPromptRequest) {
+      const PROMPTS = [
+        'What belief about yourself have you outgrown, yet still find yourself subconsciously carrying?',
+        'How would you describe the woman you are becoming in five vivid adjectives?',
+        'What is one bold desire you have whispered in secret that you are now ready to declare out loud?',
+        'In which relationship or commitment are you currently tolerating conditions that no longer match who you are becoming?',
+        'If you knew with absolute certainty that your worth was not tied to pleasing others, what would you stop doing today?'
+      ];
+
+      // Pick prompt not yet answered if possible
+      const answeredQuestions = (returningInfo?.reflections || []).map((r: any) => r.question);
+      const availablePrompts = PROMPTS.filter((p) => !answeredQuestions.includes(p));
+      const selectedPrompt =
+        availablePrompts.length > 0
+          ? availablePrompts[0]
+          : PROMPTS[Math.floor(Math.random() * PROMPTS.length)];
+
+      const reply =
+        `Beloved ${contactName}, take a slow, nourishing breath and place a hand on your heart. 🌸\n\n` +
+        `Here is your sacred reflection inquiry for today:\n\n` +
+        `👉 *"${selectedPrompt}"*\n\n` +
+        `Take a quiet moment. Reply directly to this message with your authentic response, and I will save it to your Becoming Her transformation journal and reflect on it with you. ✨`;
+
+      return {
+        replyText: reply,
+        buttons: [
+          { id: 'btn_my_reflections', title: '💭 Previous Reflections' },
+          { id: 'btn_view_goals', title: '🎯 My Goals' },
+          { id: 'btn_talk_human', title: 'Talk to Coach' }
+        ],
+        state: 'JOURNAL_REFLECTION',
+        summary: `pending_prompt:${selectedPrompt}`
+      };
+    }
+
+    // -------------------------------------------------------------------------
+    // 4. RETRIEVE & ANSWER QUESTIONS ABOUT USER GOALS
+    // -------------------------------------------------------------------------
+    const isGoalInquiry =
+      buttonId === 'btn_view_goals' ||
+      lower.includes('my goal') ||
+      lower.includes('my goals') ||
+      lower.includes('what are my goals') ||
+      lower.includes('action step') ||
+      lower.includes('my progress') ||
+      lower.includes('show goals');
+
+    if (isGoalInquiry) {
+      const goals = returningInfo?.goals || [];
+      if (goals.length > 0) {
+        const goalsFormatted = goals
+          .map((g: any, idx: number) => {
+            const steps = (g.action_steps || [])
+              .map((s: any) => `  ${s.is_completed ? '✅' : '⏳'} ${s.text}`)
+              .join('\n');
+            return `*${idx + 1}. ${g.title}* (${g.progress}% completed)\n_Category: ${g.category}_\n${steps}`;
+          })
+          .join('\n\n');
+
+        const reply =
+          `🎯 *Your Active Transformation Goals, ${contactName}:*\n\n` +
+          `${goalsFormatted}\n\n` +
+          `Which of these action steps feels most aligned to nurture today?`;
+
+        return {
+          replyText: reply,
+          buttons: [
+            { id: 'btn_reflect_prompt', title: '✍️ Reflect Now' },
+            { id: 'btn_my_reflections', title: '💭 My Reflections' },
+            { id: 'btn_talk_human', title: 'Talk to Coach' }
+          ],
+          state: 'CUSTOMER_ACTIVE'
+        };
+      } else {
+        const reply = `You don't have active goals saved in your portal yet, ${contactName}. You can add your core milestones in your member dashboard at ${baseUrl}/dashboard/coaching.`;
+        return {
+          replyText: reply,
+          buttons: [
+            { id: 'btn_reflect_prompt', title: '✍️ Reflect Now' },
+            { id: 'btn_my_reflections', title: '💭 My Reflections' }
+          ],
+          state: 'CUSTOMER_ACTIVE'
+        };
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 5. RETRIEVE & ANSWER QUESTIONS ABOUT ONBOARDING / LIFE ASSESSMENT
+    // -------------------------------------------------------------------------
+    const isAssessmentInquiry =
+      lower.includes('questionnaire') ||
+      lower.includes('onboarding') ||
+      lower.includes('assessment') ||
+      lower.includes('my challenge') ||
+      lower.includes('my life area');
+
+    if (isAssessmentInquiry) {
+      const q = returningInfo?.questionnaire || {
+        life_area: 'Career Leadership & Boundaries',
+        challenge: 'Saying yes to too many demands and feeling stretched thin.',
+        goals: 'Learn to say no with peace; lead our upcoming division launch.',
+        support_pref: 'Gentle inquiry with structured weekly accountability.'
+      };
+
+      const reply =
+        `📋 *Your Life Assessment & Onboarding Focus, ${contactName}:*\n\n` +
+        `🌿 *Core Growth Area:* ${q.life_area}\n` +
+        `⚡ *Primary Challenge:* ${q.challenge}\n` +
+        `🎯 *Desired Breakthrough:* ${q.goals}\n` +
+        `🤝 *Support Style:* ${q.support_pref}\n\n` +
+        `Everything we explore is anchored around this breakthrough. How is this challenge showing up for you today?`;
+
+      return {
+        replyText: reply,
+        buttons: [
+          { id: 'btn_reflect_prompt', title: '✍️ Reflect Now' },
+          { id: 'btn_my_reflections', title: '💭 My Reflections' },
+          { id: 'btn_talk_human', title: 'Talk to Coach' }
+        ],
+        state: 'CUSTOMER_ACTIVE'
+      };
+    }
+
+    // -------------------------------------------------------------------------
+    // 6. PROGRAMMES & SERVICES EXPLORATION
+    // -------------------------------------------------------------------------
+    if (
+      buttonId === 'btn_explore_services' ||
+      lower.includes('programmes') ||
+      lower.includes('services') ||
+      lower.includes('pricing') ||
+      lower.includes('cost')
+    ) {
       const reply =
         `✨ *Becoming Her Transformational Coaching Options:*\n\n` +
         `1️⃣ *${guidedSrv.name}* — KES ${guidedSrv.price.toLocaleString()}\n` +
@@ -284,7 +593,12 @@ export class WhatsAppEngine {
       };
     }
 
-    if (buttonId === 'btn_select_guided' || lower.includes('guided') || lower.includes('1000') || lower.includes('1,000')) {
+    if (
+      buttonId === 'btn_select_guided' ||
+      lower.includes('guided') ||
+      lower.includes('1000') ||
+      lower.includes('1,000')
+    ) {
       const srv = guidedSrv;
       const checkoutUrl = `${baseUrl}/register?source=whatsapp&service=${srv.id}`;
       const reply =
@@ -305,7 +619,12 @@ export class WhatsAppEngine {
       };
     }
 
-    if (buttonId === 'btn_select_custom' || lower.includes('customized') || lower.includes('1500') || lower.includes('1,500')) {
+    if (
+      buttonId === 'btn_select_custom' ||
+      lower.includes('customized') ||
+      lower.includes('1500') ||
+      lower.includes('1,500')
+    ) {
       const srv = customSrv;
       const checkoutUrl = `${baseUrl}/register?source=whatsapp&service=${srv.id}`;
       const reply =
@@ -325,7 +644,13 @@ export class WhatsAppEngine {
       };
     }
 
-    if (buttonId === 'btn_select_interpersonal' || lower.includes('daytime') || lower.includes('1-on-1') || lower.includes('2500') || lower.includes('2,500')) {
+    if (
+      buttonId === 'btn_select_interpersonal' ||
+      lower.includes('daytime') ||
+      lower.includes('1-on-1') ||
+      lower.includes('2500') ||
+      lower.includes('2,500')
+    ) {
       const srv = interSrv;
       const checkoutUrl = `${baseUrl}/register?source=whatsapp&service=${srv.id}`;
       const reply =
@@ -345,41 +670,87 @@ export class WhatsAppEngine {
       };
     }
 
-    // State 1: Returning Customer Handling
+    // -------------------------------------------------------------------------
+    // 7. BOOKING SCHEDULE STATUS
+    // -------------------------------------------------------------------------
     if (returningInfo && returningInfo.hasProgramme) {
       if (lower.includes('my session') || lower.includes('my booking') || lower.includes('status')) {
         const nextB = returningInfo.activeBookings[0];
         const statusMsg = nextB
           ? `Hello ${contactName}! You have an upcoming booking scheduled for *${nextB.scheduled_date} at ${nextB.start_time}*.\n\nStatus: *${nextB.booking_status}*.\nMeeting Link: ${nextB.meeting_link || 'Will be shared 24h prior'}.\n\nYou can also view your full schedule at ${baseUrl}/dashboard.`
-          : `Hello ${contactName}! You are an enrolled Becoming Her member. You have no pending live sessions right now, but your modules are ready in your portal at ${baseUrl}/dashboard.`;
+          : `Hello ${contactName}! You are an enrolled Becoming Her member. You have no pending live sessions right now, but your modules and reflections are ready in your portal at ${baseUrl}/dashboard.`;
 
         return {
           replyText: statusMsg,
+          buttons: [
+            { id: 'btn_my_reflections', title: '💭 My Reflections' },
+            { id: 'btn_view_goals', title: '🎯 My Goals' },
+            { id: 'btn_reflect_prompt', title: '✍️ Reflect Now' }
+          ],
           state: 'CUSTOMER_ACTIVE'
         };
       }
     }
 
-    // State 2: NEW_VISITOR / Welcoming
-    if (state === 'NEW_VISITOR' || lower === 'hi' || lower === 'hello' || lower === 'habari' || lower === 'hey') {
-      const greeting = returningInfo
-        ? `Hello ${contactName}, welcome back to *Becoming Her*! 🌸 How is your journey feeling today?`
+    // -------------------------------------------------------------------------
+    // 8. WELCOME / GREETING (Personalized for returning members)
+    // -------------------------------------------------------------------------
+    if (
+      state === 'NEW_VISITOR' ||
+      lower === 'hi' ||
+      lower === 'hello' ||
+      lower === 'habari' ||
+      lower === 'hey'
+    ) {
+      const isMember = returningInfo?.isCustomer;
+      const greeting = isMember
+        ? `Hello ${contactName}, welcome back to your *Becoming Her* sanctuary! 🌸\n\nI have your active coaching reflections, questionnaire, and goals on hand. How are you feeling today, and what would you like to explore together?`
         : `Hello ${contactName}! 🌸 Welcome to *Becoming Her* — a digital sanctuary dedicated to helping women step into their highest clarity, confidence, and purpose.\n\nI am your AI coaching companion. How are you feeling today, and what brings you to Becoming Her?`;
+
+      const buttons = isMember
+        ? [
+            { id: 'btn_my_reflections', title: '💭 My Reflections' },
+            { id: 'btn_view_goals', title: '🎯 My Goals' },
+            { id: 'btn_reflect_prompt', title: '✍️ Reflect Now' }
+          ]
+        : [
+            { id: 'btn_share_struggles', title: 'Share My Goals' },
+            { id: 'btn_explore_services', title: 'View Programmes' },
+            { id: 'btn_talk_human', title: 'Talk to Coach' }
+          ];
 
       return {
         replyText: greeting,
-        buttons: [
-          { id: 'btn_share_struggles', title: 'Share My Goals' },
-          { id: 'btn_explore_services', title: 'View Programmes' },
-          { id: 'btn_talk_human', title: 'Talk to Coach' }
-        ],
-        state: 'DISCOVERY'
+        buttons,
+        state: isMember ? 'CUSTOMER_ACTIVE' : 'DISCOVERY'
       };
     }
 
-    // State 3: DISCOVERY / Deep Coaching Guidance
-    if (state === 'DISCOVERY' || state === 'COACHING') {
-      const coachingGuidance = this.generateEmpatheticCoaching(text);
+    // -------------------------------------------------------------------------
+    // 9. GENERAL COACHING / DISCOVERY (Grounded in answered questions)
+    // -------------------------------------------------------------------------
+    if (state === 'DISCOVERY' || state === 'COACHING' || state === 'CUSTOMER_ACTIVE') {
+      let coachingGuidance = this.generateEmpatheticCoaching(text);
+
+      // If user has answered reflections or questionnaire, ground the response directly in their actual words!
+      if (returningInfo?.reflections && returningInfo.reflections.length > 0) {
+        const r = returningInfo.reflections[0];
+        coachingGuidance += `\n\n💡 *Grounded in your reflections:* Remember what you wrote: _"${r.response.slice(0, 160)}..."_ Let this awareness guide your choices today.`;
+      } else if (returningInfo?.questionnaire?.challenge) {
+        coachingGuidance += `\n\n💡 *Grounded in your goals:* In your onboarding assessment, you focused on _"${returningInfo.questionnaire.challenge}"_. Notice how this moment is inviting you to practice that boundary.`;
+      }
+
+      if (returningInfo?.isCustomer) {
+        return {
+          replyText: `${coachingGuidance}\n\nHow does that resonate with where you are feeling pulled right now?`,
+          buttons: [
+            { id: 'btn_reflect_prompt', title: '✍️ Reflect Now' },
+            { id: 'btn_my_reflections', title: '💭 My Reflections' },
+            { id: 'btn_talk_human', title: 'Talk to Coach' }
+          ],
+          state: 'CUSTOMER_ACTIVE'
+        };
+      }
 
       const reply =
         `${coachingGuidance}\n\n` +

@@ -1025,6 +1025,49 @@ class Store {
   public getKnowledgeBaseArticles(): KnowledgeDocument[] {
     return this.knowledgeBase;
   }
+
+  public getUserReflections(userId: string): UserReflection[] {
+    const list = this.reflections.filter((r) => r.user_id === userId);
+    // If no direct reflections, check if demo reflections can guide
+    if (list.length === 0 && (userId === 'cust-demo-01' || !userId)) {
+      return this.reflections;
+    }
+    return list;
+  }
+
+  public saveUserReflection(params: {
+    userId: string;
+    question: string;
+    response: string;
+    programmeId?: string;
+    moduleId?: string;
+    questionId?: string;
+  }): UserReflection {
+    const newRef: UserReflection = {
+      id: `ref-${Date.now()}`,
+      user_id: params.userId,
+      programme_id: params.programmeId || 'prog-guided-01',
+      module_id: params.moduleId || 'mod-1',
+      question_id: params.questionId || `q-${Date.now()}`,
+      question: params.question,
+      response: params.response,
+      created_at: new Date().toISOString()
+    };
+    this.reflections.unshift(newRef);
+    return newRef;
+  }
+
+  public getUserGoals(userId: string): Goal[] {
+    const list = this.goals.filter((g) => g.user_id === userId);
+    if (list.length === 0 && (userId === 'cust-demo-01' || !userId)) {
+      return this.goals;
+    }
+    return list;
+  }
+
+  public getUserQuestionnaire(userId: string): any {
+    return this.questionnaires[userId];
+  }
 }
 
 export const store = Store.getInstance();

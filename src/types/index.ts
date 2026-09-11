@@ -156,13 +156,17 @@ export interface OnboardingQuestionnaire {
   id?: string;
   user_id: string;
   life_area: string;
-  current_challenge: string;
-  desired_achievement: string;
-  obstacles: string;
-  current_goals: string;
-  support_preference: string;
+  current_challenge?: string;
+  challenge?: string;
+  desired_achievement?: string;
+  goals?: string;
+  obstacles?: string;
+  current_goals?: string;
+  support_preference?: string;
+  support_pref?: string;
   additional_notes?: string;
-  submitted_at: string;
+  submitted_at?: string;
+  completed_at?: string;
 }
 
 export interface Goal {
@@ -325,6 +329,7 @@ export type WhatsAppConversationState =
   | 'PAYMENT_SUCCESSFUL'
   | 'PAYMENT_FAILED'
   | 'CUSTOMER_ACTIVE'
+  | 'JOURNAL_REFLECTION'
   | 'BOOKING_FLOW'
   | 'SUPPORT'
   | 'HUMAN_HANDOFF';
