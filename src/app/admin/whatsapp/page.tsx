@@ -49,7 +49,7 @@ export default function AdminWhatsAppPage() {
     {
       id: 'msg-init-1',
       senderType: 'bot',
-      body: 'Hello Faith! 🌸 Welcome to *Becoming Her* — a digital sanctuary dedicated to helping women step into their highest clarity, confidence, and purpose.\n\nI am your AI coaching companion. How are you feeling today, and what brings you to Becoming Her?',
+      body: 'Hello Faith! 🌸 Welcome to *Becoming Her* — a digital sanctuary dedicated to helping women step into their highest clarity, confidence, and purpose.\n\nI am your Becoming Her coaching companion. How are you feeling today, and what brings you to Becoming Her?',
       createdAt: new Date(Date.now() - 3600000).toISOString()
     }
   ]);
@@ -133,7 +133,7 @@ export default function AdminWhatsAppPage() {
             Meta WhatsApp Cloud API & Sandbox Live
           </div>
           <h1 className="font-serif text-3xl font-bold text-stone-900 tracking-tight">
-            WhatsApp AI Coaching Bot
+            WhatsApp Coaching Assistant
           </h1>
           <p className="text-sm text-stone-500 mt-1">
             Empathetic conversational coaching, automated programme recommendations, and Selar conversion funnel.
@@ -179,7 +179,7 @@ export default function AdminWhatsAppPage() {
               <MessageSquare className="w-4 h-4 text-emerald-600" />
             </div>
             <span className="text-[10px] text-stone-500 font-medium mt-1 block">
-              Automated AI mode
+              Automated Companion mode
             </span>
           </CardContent>
         </Card>
@@ -254,7 +254,7 @@ export default function AdminWhatsAppPage() {
               <h3 className="font-serif text-lg font-bold text-stone-900 flex items-center gap-2">
                 <Smartphone className="w-4 h-4 text-rose-800" /> Live WhatsApp Simulator
               </h3>
-              <p className="text-xs text-stone-500">Test AI coaching state transitions in real time</p>
+              <p className="text-xs text-stone-500">Test sanctuary companion state transitions in real time</p>
             </div>
             <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-stone-100 text-stone-600 border border-stone-200">
               State: {simState}
@@ -282,7 +282,7 @@ export default function AdminWhatsAppPage() {
                       Becoming Her Coach
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                     </h4>
-                    <p className="text-[10px] text-emerald-100">Official Coaching AI</p>
+                    <p className="text-[10px] text-emerald-100">Official Coaching Sanctuary</p>
                   </div>
                 </div>
                 <div className="text-[10px] bg-emerald-800/80 px-2 py-0.5 rounded text-emerald-100 font-medium">

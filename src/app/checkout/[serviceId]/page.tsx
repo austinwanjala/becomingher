@@ -256,7 +256,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ serviceId: 
                             Step 1: Create an Account Before Payment
                           </h4>
                           <p className="text-xs text-stone-600 leading-relaxed">
-                            An account is required so your purchased coaching modules, private AI companion, and calendar meeting links are immediately assigned to you upon payment confirmation.
+                            An account is required so your purchased coaching modules, personal reflection companion, and calendar meeting links are immediately assigned to you upon payment confirmation.
                           </p>
                         </div>
                       </div>

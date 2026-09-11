@@ -61,7 +61,7 @@ export function Footer() {
               </li>
               <li>
                 <Link href="/dashboard/coaching" className="hover:text-amber-200 transition">
-                  AI Coaching Assistant
+                  Sanctuary Companion
                 </Link>
               </li>
               <li>

@@ -113,7 +113,7 @@ export default function AdminServicesPage() {
         short_description: shortDesc,
         description,
         image_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=800',
-        features: ['Comprehensive Guided Lessons', 'Reflection Inquiries', 'AI Assistant Support'],
+        features: ['Comprehensive Guided Lessons', 'Reflection Inquiries', 'Companion Support'],
         selar_product_id: selarProductId,
         selar_product_url: selarProductUrl,
         is_active: isActive,

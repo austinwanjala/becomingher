@@ -17,9 +17,9 @@ export default function PrivacyPage() {
           <p>
             We collect personal details (name, email, phone) necessary for account access, payment verification, and session scheduling. Payment processing credentials (card details, M-Pesa PINs) are processed directly by Selar and are never stored on our servers.
           </p>
-          <h3 className="font-serif text-lg font-semibold text-stone-900">2. Journaling & AI Confidentiality</h3>
+          <h3 className="font-serif text-lg font-semibold text-stone-900">2. Journaling & Sanctuary Confidentiality</h3>
           <p>
-            All reflection responses and AI coaching dialogues are securely stored and mapped exclusively to your authenticated user identifier. We never sell or share client development data with third-party advertisers.
+            All reflection responses and coaching dialogues are securely stored and mapped exclusively to your authenticated user identifier. We never sell or share client development data with third-party advertisers.
           </p>
         </div>
       </main>

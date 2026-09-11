@@ -125,7 +125,7 @@ export default async function RegisterPage({
                   className="rounded-xl border-stone-200 focus-visible:ring-rose-900 text-sm"
                 />
                 <span className="text-[10px] text-stone-500 block">
-                  Used to receive coaching reminders, meeting links, and WhatsApp AI companion sync.
+                  Used to receive coaching reminders, meeting links, and WhatsApp coaching companion updates.
                 </span>
               </div>
 

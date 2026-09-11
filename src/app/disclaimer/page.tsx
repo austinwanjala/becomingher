@@ -8,12 +8,12 @@ export default function DisclaimerPage() {
       <Navbar />
       <main className="flex-grow max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-8">
         <h1 className="font-serif text-3xl sm:text-4xl font-semibold text-stone-900 border-b border-stone-200 pb-4">
-          Coaching & AI Safety Disclaimer
+          Coaching & Sanctuary Safety Disclaimer
         </h1>
         <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs sm:text-sm flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
           <p>
-            Becoming Her, its programmes, coaches, and AI digital coaching assistant provide personal development and life-clarity coaching only. We do not provide clinical therapy, psychiatric treatment, medical care, legal representation, or financial advice.
+            Becoming Her, its programmes, coaches, and digital coaching companions provide personal development and life-clarity coaching only. We do not provide clinical therapy, psychiatric treatment, medical care, legal representation, or financial advice.
           </p>
         </div>
         <div className="prose prose-stone text-xs sm:text-sm leading-relaxed space-y-6 text-stone-700">

@@ -20,7 +20,7 @@ export default function FAQPage() {
               Frequently Asked Questions
             </h1>
             <p className="text-stone-600 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
-              Clear answers regarding payments on Selar, programme access, AI coaching, and 1-on-1 mentorship.
+              Clear answers regarding payments on Selar, programme access, digital coaching companions, and 1-on-1 mentorship.
             </p>
           </div>
         </section>

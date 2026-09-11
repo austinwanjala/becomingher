@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Becoming Her | Digital Personal Development & Coaching Sanctuary for Women",
-  description: "A digital personal development platform helping women access structured coaching programmes, AI-guided mentorship, and private 1-on-1 sessions. Founded by Zipporah Karanja.",
+  description: "A digital personal development platform helping women access structured coaching programmes, personalized guided mentorship, and private 1-on-1 sessions. Founded by Zipporah Karanja.",
   keywords: ["women coaching", "personal development", "becoming her", "zipporah karanja", "life coaching kenya", "digital coaching programme"],
   openGraph: {
     title: "Becoming Her | Digital Sanctuary for Women",

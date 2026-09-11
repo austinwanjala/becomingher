@@ -69,7 +69,7 @@ export default function CustomerDashboardLayout({
   const navItems = [
     { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
     { name: 'My Programmes', href: '/dashboard/programmes', icon: BookOpen },
-    { name: 'AI Coaching & Goals', href: '/dashboard/coaching', icon: Sparkles },
+    { name: 'Reflection & Goals', href: '/dashboard/coaching', icon: Sparkles },
     { name: 'My Sessions', href: '/dashboard/sessions', icon: Calendar },
     { name: 'Purchases & Receipts', href: '/dashboard/purchases', icon: CreditCard },
     { name: 'My Profile', href: '/dashboard/profile', icon: User },

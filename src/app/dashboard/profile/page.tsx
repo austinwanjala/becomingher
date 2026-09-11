@@ -92,7 +92,7 @@ export default function ProfileDashboardPage() {
             </label>
 
             <label className="flex items-center justify-between p-3 rounded-xl bg-stone-50 border border-stone-100 cursor-pointer">
-              <span>Receive weekly inspirational journaling prompts from AI Assistant</span>
+              <span>Receive weekly inspirational journaling prompts from Sanctuary Companion</span>
               <input
                 type="checkbox"
                 checked={notifications.weeklyJournalPrompts}

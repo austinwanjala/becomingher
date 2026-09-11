@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         reply: `I hear how much pain you are holding right now, and I want you to know that your life and well-being are sacred. 
 
-Because I am an AI coaching assistant, I am not equipped to provide clinical mental health therapy or crisis intervention. Please connect right away with trusted professionals who can hold and support you:
+Because I am a digital reflection companion, I am not equipped to provide clinical mental health therapy or crisis intervention. Please connect right away with trusted professionals who can hold and support you:
 
 • **Kenya Red Cross Toll-Free Crisis Line**: 1199 (Available 24/7)
 • **Befrienders Kenya**: +254 722 178 177

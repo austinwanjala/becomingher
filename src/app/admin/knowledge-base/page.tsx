@@ -49,10 +49,10 @@ export default function AdminKnowledgeBasePage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-serif text-3xl font-semibold text-stone-900">
-            AI Coaching Knowledge Base & Frameworks
+            Sanctuary Knowledge Base & Frameworks
           </h1>
           <p className="text-xs sm:text-sm text-stone-600">
-            Approved coaching methodologies and policies that ground the AI Digital Coaching Assistant.
+            Approved coaching methodologies and policies that ground the Sanctuary Digital Companion.
           </p>
         </div>
 
@@ -149,7 +149,7 @@ export default function AdminKnowledgeBasePage() {
                   required
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  placeholder="Paste the approved methodology or instructions the AI must strictly adhere to..."
+                  placeholder="Paste the approved methodology or instructions the companion must strictly adhere to..."
                   className="w-full px-3 py-2 rounded-xl border border-stone-300"
                 />
               </div>

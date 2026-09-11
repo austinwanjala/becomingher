@@ -62,7 +62,7 @@ export class WhatsAppEngine {
       const normalized = text.trim().toLowerCase();
       if (normalized === 'resume' || normalized === 'bot' || normalized === 'restart') {
         store.toggleHumanHandoff(conversation.id, false);
-        const welcomeBack = "Welcome back! 🌸 I am your Becoming Her AI coaching companion. How can I support you today?";
+        const welcomeBack = "Welcome back! 🌸 I am your Becoming Her coaching companion. How can I support you today?";
         await whatsAppClient.sendMessage({ to: cleanPhone, text: welcomeBack });
         store.recordWhatsAppMessage(
           conversation.id,
@@ -110,13 +110,13 @@ export class WhatsAppEngine {
         "I understand completely. Coach Zipporah Karanja and our support team are available directly on WhatsApp:\n\n" +
         "📱 *Direct Coach WhatsApp:* +254 720 120 227\n" +
         `👉 *Chat Directly on WhatsApp:*\n${directWaUrl}\n\n` +
-        "Someone will personally attend to you right away. If you ever wish to resume chatting with our AI coach, simply text *RESUME*.";
+        "Someone will personally attend to you right away. If you ever wish to resume chatting with our coaching companion, simply text *RESUME*.";
 
       await whatsAppClient.sendMessage({
         to: cleanPhone,
         text: handoffMsg,
         buttons: [
-          { id: 'btn_resume_bot', title: 'Resume AI Coach' },
+          { id: 'btn_resume_bot', title: 'Resume Companion' },
           { id: 'btn_explore_services', title: 'View Programmes' }
         ]
       });
@@ -130,7 +130,7 @@ export class WhatsAppEngine {
       return {
         replyText: handoffMsg,
         buttons: [
-          { id: 'btn_resume_bot', title: 'Resume AI Coach' },
+          { id: 'btn_resume_bot', title: 'Resume Companion' },
           { id: 'btn_explore_services', title: 'View Programmes' }
         ],
         state: 'HUMAN_HANDOFF',
@@ -336,7 +336,7 @@ export class WhatsAppEngine {
         `📝 *Prompt:* "${prompt}"\n\n` +
         `💭 *Your Authentic Response:*\n` +
         `"${text}"\n\n` +
-        `🌱 *Coach Zipporah & AI Real-Time Insight:*\n` +
+        `🌱 *Coach Zipporah & Real-Time Insight:*\n` +
         `Notice the clarity and courage in naming your truth. When you articulate what has been quiet inside, you take back your personal sovereignty.\n\n` +
         `How does it feel to see those words? What is one gentle commitment you can make today to honor this awareness?`;
 
@@ -705,7 +705,7 @@ export class WhatsAppEngine {
       const isMember = returningInfo?.isCustomer;
       const greeting = isMember
         ? `Hello ${contactName}, welcome back to your *Becoming Her* sanctuary! 🌸\n\nI have your active coaching reflections, questionnaire, and goals on hand. How are you feeling today, and what would you like to explore together?`
-        : `Hello ${contactName}! 🌸 Welcome to *Becoming Her* — a digital sanctuary dedicated to helping women step into their highest clarity, confidence, and purpose.\n\nI am your AI coaching companion. How are you feeling today, and what brings you to Becoming Her?`;
+        : `Hello ${contactName}! 🌸 Welcome to *Becoming Her* — a digital sanctuary dedicated to helping women step into their highest clarity, confidence, and purpose.\n\nI am your Becoming Her coaching companion. How are you feeling today, and what brings you to Becoming Her?`;
 
       const buttons = isMember
         ? [

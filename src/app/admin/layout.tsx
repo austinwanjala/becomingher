@@ -66,14 +66,14 @@ export default async function AdminLayout({
 
   const navItems = [
     { name: 'Overview', href: '/admin', icon: LayoutDashboard },
-    { name: 'WhatsApp AI Bot', href: '/admin/whatsapp', icon: MessageSquare },
+    { name: 'WhatsApp Assistant', href: '/admin/whatsapp', icon: MessageSquare },
     { name: 'Customers', href: '/admin/customers', icon: Users },
     { name: 'Services Catalog', href: '/admin/services', icon: FileText },
     { name: 'Curriculum & Modules', href: '/admin/programmes', icon: BookOpen },
     { name: 'Bookings & Calendar', href: '/admin/bookings', icon: Calendar },
     { name: 'Payments & Selar', href: '/admin/payments', icon: CreditCard },
     { name: 'Website CMS', href: '/admin/cms', icon: Globe },
-    { name: 'AI Knowledge Base', href: '/admin/knowledge-base', icon: Brain },
+    { name: 'Sanctuary Knowledge Base', href: '/admin/knowledge-base', icon: Brain },
     { name: 'Coupons & Discounts', href: '/admin/coupons', icon: Tag },
     { name: 'Platform Settings', href: '/admin/settings', icon: Settings },
     { name: 'Audit Logs', href: '/admin/audit-logs', icon: History },

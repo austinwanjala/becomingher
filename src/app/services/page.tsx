@@ -22,7 +22,7 @@ export default function ServicesPage() {
               Coaching Containers Designed for Lasting Alignment
             </h1>
             <p className="text-stone-600 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">
-              Explore our structured digital programmes, bespoke AI coaching roadmaps, and 1-on-1 private video mentorship sessions.
+              Explore our structured digital programmes, bespoke personal development roadmaps, and 1-on-1 private video mentorship sessions.
             </p>
           </div>
         </section>

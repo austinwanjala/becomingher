@@ -31,7 +31,7 @@ const DEFAULT_WELCOME_MESSAGE: ChatMessage = {
   senderType: 'bot',
   body:
     "Hello! 🌸 Welcome to *Becoming Her* — a digital sanctuary dedicated to helping women step into their highest clarity, confidence, and purpose.\n\n" +
-    "I am your AI coaching companion. How are you feeling today, and what brings you to Becoming Her?",
+    "I am your Becoming Her coaching companion. How are you feeling today, and what brings you to Becoming Her?",
   metadata: {
     buttons: [
       { id: 'btn_explore_services', title: 'View Programmes' },
@@ -361,7 +361,7 @@ export function FloatingWhatsApp() {
                 </h4>
                 <p className="text-[10px] text-emerald-100 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
-                  {visitorUserId ? `Member: ${visitorName}` : 'Online • AI Companion'}
+                  {visitorUserId ? `Member: ${visitorName}` : 'Online • Sanctuary Companion'}
                 </p>
               </div>
             </div>

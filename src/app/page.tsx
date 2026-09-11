@@ -83,7 +83,7 @@ export default function HomePage() {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Sparkles className="w-4 h-4 text-amber-600" />
-                    <span>Integrated AI Guidance</span>
+                    <span>Guided Reflection Sanctuary</span>
                   </div>
                 </div>
               </div>
@@ -125,7 +125,7 @@ export default function HomePage() {
                 Curated Pathways to Your Highest Self
               </h2>
               <p className="text-stone-600 text-base">
-                Whether you thrive in structured digital curricula, crave personalized AI accountability, or require 1-on-1 executive mentorship, our containers are crafted for profound transformation.
+                Whether you thrive in structured digital curricula, crave personalized daily accountability, or require 1-on-1 executive mentorship, our containers are crafted for profound transformation.
               </p>
             </div>
 
@@ -218,7 +218,7 @@ export default function HomePage() {
                 {
                   step: '01',
                   title: 'Choose Your Experience',
-                  desc: 'Select from our Guided Digital Programme, Customized AI Journey, or 1-on-1 Live Coaching with Zipporah.'
+                  desc: 'Select from our Guided Digital Programme, Personalized Coaching Journey, or 1-on-1 Live Mentorship with Zipporah.'
                 },
                 {
                   step: '02',
@@ -228,12 +228,12 @@ export default function HomePage() {
                 {
                   step: '03',
                   title: 'Instant Entitlement Unlock',
-                  desc: 'Our server confirms your payment in real-time, unlocking all modules, AI coaching access, or Google Meet links.'
+                  desc: 'Our server confirms your payment in real-time, unlocking all modules, interactive reflection tools, or Google Meet links.'
                 },
                 {
                   step: '04',
                   title: 'Reflect, Grow & Become',
-                  desc: 'Track your personal goals, complete guided reflection prompts, and converse with your private AI companion.'
+                  desc: 'Track your personal goals, complete guided reflection prompts, and deepen your journey with your private growth companion.'
                 }
               ].map((item, idx) => (
                 <div
@@ -277,8 +277,8 @@ export default function HomePage() {
                       desc: 'Our proprietary 4-Stage Transformation Cycle bridges the gap between inner unlearning and outer embodiment.'
                     },
                     {
-                      title: 'Ethical & Contextual AI Companion',
-                      desc: 'An AI coaching assistant that remembers your goals, checks in on your reflections, and respects ethical boundaries.'
+                      title: 'Continuous Guided Growth Companion',
+                      desc: 'An intuitive digital companion that remembers your goals, checks in on your reflections, and supports your sovereign expansion.'
                     },
                     {
                       title: 'High-Touch Intimate Support',
@@ -314,10 +314,10 @@ export default function HomePage() {
 
                   <div className="p-6 bg-white rounded-2xl shadow-sm border border-stone-200/80 space-y-3">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-rose-900 text-white flex items-center justify-center text-[10px]">
-                        AI
+                      <div className="w-6 h-6 rounded-full bg-rose-950 text-amber-200 flex items-center justify-center">
+                        <Sparkles className="w-3.5 h-3.5" />
                       </div>
-                      <span className="text-xs font-semibold text-stone-900">Becoming Her AI Coach</span>
+                      <span className="text-xs font-semibold text-stone-900">Sanctuary Reflection Companion</span>
                     </div>
                     <p className="text-xs text-stone-700 leading-relaxed">
                       "I noticed in your goal review that you are holding back on leading the team presentation out of fear of being perceived as 'too loud.' Remember: sovereignty does not shrink so others feel comfortable. How can we reframe your voice as an act of service rather than imposition?"

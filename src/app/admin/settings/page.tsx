@@ -433,7 +433,7 @@ export default function AdminSettingsPage() {
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-stone-200 shadow-sm space-y-4">
           <h3 className="font-serif text-base font-semibold text-stone-900 flex items-center gap-2 border-b border-stone-100 pb-3">
             <Brain className="w-4 h-4 text-rose-800" />
-            <span>AI Digital Coach Principles</span>
+            <span>Sanctuary Companion Principles</span>
           </h3>
 
           <div className="space-y-3">

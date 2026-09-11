@@ -14,7 +14,7 @@ export default function CustomCoachingPage() {
     'What has been quietly preventing you from achieving it in the past?',
     'What are your top three current goals?',
     'What kind of coaching support do you prefer (e.g. gentle inquiry, direct strategy, structured journaling)?',
-    'Anything else you would like your coach and AI companion to know?'
+    'Anything else you would like Coach Zipporah and your reflection companion to know?'
   ];
 
   return (
@@ -26,7 +26,7 @@ export default function CustomCoachingPage() {
         <section className="py-16 bg-gradient-to-b from-[#F7F3EE] to-[#FAF8F5] border-b border-stone-200/60">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-5">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-100 text-rose-950 text-xs font-semibold">
-              <Brain className="w-3.5 h-3.5 text-rose-700" /> Bespoke & AI-Architected
+              <Sparkles className="w-3.5 h-3.5 text-rose-700" /> Bespoke & Intentionally Architected
             </div>
             <h1 className="font-serif text-3xl sm:text-5xl font-semibold text-stone-900">
               {service.name}
@@ -86,10 +86,10 @@ export default function CustomCoachingPage() {
                 3
               </div>
               <h3 className="font-serif font-semibold text-stone-900 text-lg">
-                Continuous AI Coaching
+                Continuous Personalized Guidance
               </h3>
               <p className="text-xs text-stone-600 leading-relaxed">
-                Your AI Coaching Assistant initiates a bespoke dialogue, offering tailored questions, customized journaling prompts, and persistent goal tracking.
+                Your dedicated coaching companion initiates a bespoke dialogue, offering tailored questions, customized journaling prompts, and persistent goal tracking.
               </p>
             </div>
           </div>

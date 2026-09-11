@@ -140,7 +140,7 @@ export default function GuidedCoachingPage() {
               Purchase this programme to unlock your coaching journey.
             </h3>
             <p className="text-xs sm:text-sm text-stone-300 max-w-xl mx-auto">
-              Access is strictly restricted to active purchasers. Complete your secure Selar checkout to immediately access all lessons, reflection prompts, and AI assistant dialogues.
+              Access is strictly restricted to active purchasers. Complete your secure Selar checkout to immediately access all lessons, reflection prompts, and guided coaching dialogues.
             </p>
             <Link
               href={`/checkout/${service.id}`}

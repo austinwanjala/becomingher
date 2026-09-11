@@ -100,7 +100,7 @@ export default function DashboardOverviewPage() {
             <Target className="w-4 h-4 text-rose-800" />
           </div>
           <p className="text-2xl font-serif font-bold text-stone-900">{goals.length}</p>
-          <span className="text-[11px] text-stone-500">Tracked with AI Support</span>
+          <span className="text-[11px] text-stone-500">Actively Monitored</span>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-sm space-y-2">
@@ -269,13 +269,13 @@ export default function DashboardOverviewPage() {
           </div>
         </div>
 
-        {/* Right Column: AI Coaching Assistant Quick Prompt & Recent Order */}
+        {/* Right Column: Reflection Companion Quick Prompt & Recent Order */}
         <div className="lg:col-span-4 space-y-8">
-          {/* AI Coaching Prompt Card */}
+          {/* Reflection Companion Prompt Card */}
           <div className="bg-gradient-to-br from-[#FAF8F5] to-rose-50/70 p-6 rounded-3xl border border-rose-200/70 shadow-sm space-y-4">
             <div className="flex items-center gap-2.5 text-rose-950">
-              <div className="w-8 h-8 rounded-full bg-rose-900 text-white flex items-center justify-center text-xs shadow-sm">
-                AI
+              <div className="w-8 h-8 rounded-full bg-rose-950 text-amber-200 flex items-center justify-center shadow-sm">
+                <Sparkles className="w-4 h-4" />
               </div>
               <div>
                 <h4 className="font-serif font-semibold text-base">Digital Coaching Sanctuary</h4>
@@ -291,7 +291,7 @@ export default function DashboardOverviewPage() {
               href="/dashboard/coaching"
               className="w-full py-2.5 rounded-xl bg-stone-900 text-amber-50 text-xs font-semibold text-center block hover:bg-rose-950 transition shadow"
             >
-              Ask Your AI Coach →
+              Open Coaching Companion →
             </Link>
           </div>
 
