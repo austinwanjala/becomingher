@@ -308,7 +308,17 @@ export interface AuditLog {
   timestamp: string;
 }
 
+export interface SiteBrandSettings {
+  name: string;
+  tagline?: string;
+  logo_url?: string;
+  logo_dark_url?: string;
+  favicon_url?: string;
+  logo_height_px?: number;
+}
+
 export interface SiteCMSContent {
+  brand?: SiteBrandSettings;
   hero: {
     badge: string;
     heading: string;

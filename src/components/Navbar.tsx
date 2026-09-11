@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Menu, X, Sparkles, User, LogOut, BookOpen, Calendar, CreditCard } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
+import { BrandLogo } from '@/components/BrandLogo';
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -51,19 +52,7 @@ export function Navbar() {
     <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-stone-50/80 border-b border-stone-200/60 transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
         {/* Brand Logo */}
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-rose-950 via-rose-800 to-amber-700 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition">
-            <Sparkles className="w-5 h-5 text-amber-200" />
-          </div>
-          <div className="flex flex-col">
-            <span className="font-serif text-xl tracking-tight font-semibold text-stone-900 group-hover:text-rose-900 transition">
-              Becoming Her
-            </span>
-            <span className="text-[10px] tracking-widest uppercase text-stone-500 font-sans font-medium">
-              Digital Sanctuary
-            </span>
-          </div>
-        </Link>
+        <BrandLogo href="/" size="md" variant="light" />
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-8">

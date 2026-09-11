@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Home
 } from 'lucide-react';
+import { BrandLogo } from '@/components/BrandLogo';
 import { createClient } from '@/utils/supabase/client';
 
 export default function CustomerDashboardLayout({
@@ -68,12 +69,7 @@ export default function CustomerDashboardLayout({
     <div className="min-h-screen flex flex-col md:flex-row bg-[#FAF8F5] text-stone-900">
       {/* Mobile Header Bar */}
       <div className="md:hidden flex items-center justify-between p-4 bg-white border-b border-stone-200">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-rose-950 flex items-center justify-center text-white">
-            <Sparkles className="w-4 h-4 text-amber-200" />
-          </div>
-          <span className="font-serif font-semibold text-lg text-stone-900">Becoming Her</span>
-        </Link>
+        <BrandLogo href="/" size="sm" variant="light" />
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
           className="p-2 text-stone-700"
@@ -88,20 +84,13 @@ export default function CustomerDashboardLayout({
           sidebarOpen ? 'block' : 'hidden'
         } md:flex flex-col w-full md:w-64 bg-white border-r border-stone-200 flex-shrink-0 z-40 md:min-h-screen`}
       >
-        <div className="p-6 border-b border-stone-100 hidden md:flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 rounded-full bg-rose-950 flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition">
-              <Sparkles className="w-4 h-4 text-amber-200" />
-            </div>
-            <div>
-              <span className="font-serif font-semibold text-lg text-stone-900 block leading-tight group-hover:text-rose-950 transition">
-                Becoming Her
-              </span>
-              <span className="text-[10px] text-rose-800 font-semibold uppercase tracking-widest">
-                Customer Portal
-              </span>
-            </div>
-          </Link>
+        <div className="p-5 border-b border-stone-100 hidden md:flex items-center justify-between">
+          <div>
+            <BrandLogo href="/" size="md" variant="light" />
+            <span className="text-[10px] text-rose-800 font-semibold uppercase tracking-widest block pl-1 mt-0.5">
+              Customer Portal
+            </span>
+          </div>
         </div>
 
         {/* User Card */}

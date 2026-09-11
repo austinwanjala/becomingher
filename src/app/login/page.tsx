@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { Sparkles, AlertCircle, ArrowLeft } from 'lucide-react'
+import { BrandLogo } from '@/components/BrandLogo'
 
 export default async function LoginPage({
   searchParams,
@@ -24,15 +25,8 @@ export default async function LoginPage({
 
       <div className="w-full max-w-md space-y-6 relative z-10">
         {/* Brand header */}
-        <div className="text-center space-y-2">
-          <Link href="/" className="inline-flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-full bg-rose-950 flex items-center justify-center text-amber-100 shadow">
-              <Sparkles className="w-4 h-4" />
-            </div>
-            <span className="font-serif text-2xl font-bold tracking-tight text-rose-950 group-hover:text-stone-900 transition">
-              Becoming Her
-            </span>
-          </Link>
+        <div className="text-center space-y-2 flex flex-col items-center">
+          <BrandLogo href="/" size="md" variant="light" />
           <p className="text-xs text-stone-600 font-medium">
             Welcome back to your sovereign coaching sanctuary
           </p>

@@ -3,11 +3,12 @@
 import { useState, use } from 'react';
 import Link from 'next/link';
 import { adminLogin } from './actions';
+import { BrandLogo } from '@/components/BrandLogo';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Sparkles, Shield, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, KeyRound } from 'lucide-react';
+import { Shield, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, KeyRound } from 'lucide-react';
 
 export default function AdminLoginPage({
   searchParams,
@@ -29,21 +30,13 @@ export default function AdminLoginPage({
 
       <div className="w-full max-w-md space-y-6 relative z-10">
         {/* Brand header */}
-        <div className="text-center space-y-2.5">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-950 via-rose-900 to-amber-800 text-amber-200 shadow-xl border border-rose-800/40">
-            <Sparkles className="w-6 h-6" />
-          </div>
-
-          <div>
-            <h1 className="font-serif text-2xl font-bold tracking-tight text-white">
-              Becoming Her
-            </h1>
-            <div className="flex items-center justify-center gap-1.5 mt-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-              <span className="text-[11px] uppercase tracking-widest text-rose-300 font-semibold">
-                Administrative Console
-              </span>
-            </div>
+        <div className="flex flex-col items-center justify-center text-center space-y-2.5">
+          <BrandLogo href="/" variant="dark" size="lg" />
+          <div className="flex items-center justify-center gap-1.5 mt-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+            <span className="text-[11px] uppercase tracking-widest text-rose-300 font-semibold">
+              Administrative Console
+            </span>
           </div>
         </div>
 

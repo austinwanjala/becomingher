@@ -20,6 +20,7 @@ import {
 import { createClient } from '@/utils/supabase/server';
 import { AdminUserBadge } from '@/components/AdminUserBadge';
 import { getUserRole, isAdminRole } from '@/lib/auth/roles';
+import { BrandLogo } from '@/components/BrandLogo';
 
 export default async function AdminLayout({
   children,
@@ -83,10 +84,8 @@ export default async function AdminLayout({
       {/* Sidebar */}
       <aside className="w-full lg:w-64 border-r border-stone-200 bg-white flex-shrink-0 z-30">
         <div className="flex h-20 items-center justify-between border-b border-stone-100 px-6">
-          <Link href="/admin" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-rose-950 flex items-center justify-center text-white">
-              <Sparkles className="w-4 h-4 text-amber-200" />
-            </div>
+          <Link href="/admin" className="flex items-center gap-2.5">
+            <BrandLogo size="sm" variant="light" showText={false} />
             <div>
               <span className="font-serif font-bold text-base text-stone-900 leading-none block">
                 Becoming Her

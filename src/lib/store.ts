@@ -14,6 +14,7 @@ import {
   KnowledgeDocument,
   AuditLog,
   SiteCMSContent,
+  SiteBrandSettings,
   OnboardingQuestionnaire,
   AIConversation,
   WhatsAppContact,
@@ -535,7 +536,24 @@ class Store {
     }
   ];
 
+  public brand: SiteBrandSettings = {
+    name: 'Becoming Her',
+    tagline: 'Digital Sanctuary',
+    logo_url: '',
+    logo_dark_url: '',
+    favicon_url: '',
+    logo_height_px: 40
+  };
+
   public cms: SiteCMSContent = {
+    brand: {
+      name: 'Becoming Her',
+      tagline: 'Digital Sanctuary',
+      logo_url: '',
+      logo_dark_url: '',
+      favicon_url: '',
+      logo_height_px: 40
+    },
     hero: {
       badge: '✨ Digital Personal Development & Coaching for Women',
       heading: 'Become the woman you are becoming.',
@@ -1125,6 +1143,32 @@ class Store {
         `Companion book "${oldTitle}" removed from programme ${this.programme.title}`
       );
     }
+  }
+
+  public updateBrand(brandData: Partial<SiteBrandSettings>): SiteBrandSettings {
+    this.brand = {
+      ...this.brand,
+      ...brandData
+    };
+    this.cms.brand = {
+      ...this.brand
+    };
+    this.addAuditLog(
+      'BRAND_UPDATED',
+      'BRANDING',
+      `Website brand and logo updated (${brandData.logo_url ? 'new logo uploaded' : 'metadata saved'})`
+    );
+    return this.brand;
+  }
+
+  public resetBrandLogo(): void {
+    this.brand.logo_url = '';
+    this.brand.logo_dark_url = '';
+    if (this.cms.brand) {
+      this.cms.brand.logo_url = '';
+      this.cms.brand.logo_dark_url = '';
+    }
+    this.addAuditLog('BRAND_LOGO_REMOVED', 'BRANDING', 'Website logo reset to default monogram');
   }
 }
 

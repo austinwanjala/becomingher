@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Sparkles, Heart, ExternalLink, ShieldCheck } from 'lucide-react';
 import { store } from '@/lib/store';
+import { BrandLogo } from '@/components/BrandLogo';
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -12,14 +13,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 pb-12 border-b border-stone-800">
           {/* Brand Col */}
           <div className="lg:col-span-2 space-y-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-rose-900 via-rose-700 to-amber-600 flex items-center justify-center text-white">
-                <Sparkles className="w-4 h-4 text-amber-200" />
-              </div>
-              <span className="font-serif text-2xl tracking-tight font-semibold text-white">
-                Becoming Her
-              </span>
-            </div>
+            <BrandLogo href="/" size="md" variant="dark" />
             <p className="text-sm text-stone-400 max-w-sm leading-relaxed">
               A private digital personal development sanctuary for women dedicated to alignment, emotional sovereignty, and stepping into their highest potential.
             </p>
