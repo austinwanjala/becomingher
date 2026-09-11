@@ -1,47 +1,39 @@
 -- =========================================================================
 -- BECOMING HER — Complete Supabase PostgreSQL Schema & Initial Seed Data
 -- Run this entire script inside your Supabase Dashboard -> SQL Editor
+-- Completely idempotent & safe: will not fail on table drops or ownership!
 -- =========================================================================
-
--- 0. CLEAN RESET PREVIOUS TABLES & TYPES (Ensures clean rebuild if old UUID types existed)
-DROP TABLE IF EXISTS public.whatsapp_messages CASCADE;
-DROP TABLE IF EXISTS public.whatsapp_conversations CASCADE;
-DROP TABLE IF EXISTS public.whatsapp_contacts CASCADE;
-DROP TABLE IF EXISTS public.whatsapp_config CASCADE;
-DROP TABLE IF EXISTS public.platform_audit_logs CASCADE;
-DROP TABLE IF EXISTS public.knowledge_documents CASCADE;
-DROP TABLE IF EXISTS public.goals CASCADE;
-DROP TABLE IF EXISTS public.reflections CASCADE;
-DROP TABLE IF EXISTS public.reflection_questions CASCADE;
-DROP TABLE IF EXISTS public.lessons CASCADE;
-DROP TABLE IF EXISTS public.programme_modules CASCADE;
-DROP TABLE IF EXISTS public.programmes CASCADE;
-DROP TABLE IF EXISTS public.bookings CASCADE;
-DROP TABLE IF EXISTS public.coaches CASCADE;
-DROP TABLE IF EXISTS public.entitlements CASCADE;
-DROP TABLE IF EXISTS public.orders CASCADE;
-DROP TABLE IF EXISTS public.services CASCADE;
-DROP TABLE IF EXISTS public.user_roles CASCADE;
-DROP TABLE IF EXISTS public.roles CASCADE;
-DROP TABLE IF EXISTS public.profiles CASCADE;
-
-DROP TYPE IF EXISTS user_role CASCADE;
-DROP TYPE IF EXISTS service_type CASCADE;
-DROP TYPE IF EXISTS payment_status CASCADE;
-DROP TYPE IF EXISTS entitlement_status CASCADE;
-DROP TYPE IF EXISTS booking_status CASCADE;
 
 -- 1. EXTENSIONS & CUSTOM ENUMS
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
-CREATE TYPE user_role AS ENUM ('SUPER_ADMIN', 'ADMIN', 'COACH', 'CUSTOMER');
-CREATE TYPE service_type AS ENUM ('DIGITAL_PROGRAMME', 'CUSTOM_COACHING', 'INTERPERSONAL_SESSION');
-CREATE TYPE payment_status AS ENUM ('PENDING', 'PROCESSING', 'SUCCESSFUL', 'FAILED', 'CANCELLED', 'REFUNDED', 'VERIFICATION_REQUIRED');
-CREATE TYPE entitlement_status AS ENUM ('ACTIVE', 'EXPIRED', 'REVOKED', 'SUSPENDED');
-CREATE TYPE booking_status AS ENUM ('PENDING_PAYMENT', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'NO_SHOW', 'RESCHEDULED');
+DO $$ BEGIN
+  CREATE TYPE user_role AS ENUM ('SUPER_ADMIN', 'ADMIN', 'COACH', 'CUSTOMER');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE service_type AS ENUM ('DIGITAL_PROGRAMME', 'CUSTOM_COACHING', 'INTERPERSONAL_SESSION');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE payment_status AS ENUM ('PENDING', 'PROCESSING', 'SUCCESSFUL', 'FAILED', 'CANCELLED', 'REFUNDED', 'VERIFICATION_REQUIRED');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE entitlement_status AS ENUM ('ACTIVE', 'EXPIRED', 'REVOKED', 'SUSPENDED');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE booking_status AS ENUM ('PENDING_PAYMENT', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'NO_SHOW', 'RESCHEDULED');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
 -- 2. PROFILES (Extends Supabase auth.users - Uses UUID matching auth.users)
-CREATE TABLE public.profiles (
+CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   role user_role DEFAULT 'CUSTOMER',
   full_name TEXT,
@@ -52,14 +44,14 @@ CREATE TABLE public.profiles (
 );
 
 -- 2B. ROLES & USER_ROLES TABLES
-CREATE TABLE public.roles (
+CREATE TABLE IF NOT EXISTS public.roles (
   id TEXT PRIMARY KEY,
   name TEXT UNIQUE NOT NULL,
   description TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE public.user_roles (
+CREATE TABLE IF NOT EXISTS public.user_roles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   role_id TEXT REFERENCES public.roles(id) ON DELETE CASCADE NOT NULL,
@@ -68,11 +60,22 @@ CREATE TABLE public.user_roles (
   UNIQUE(user_id, role_id)
 );
 
-CREATE INDEX idx_user_roles_user ON public.user_roles(user_id);
-CREATE INDEX idx_user_roles_role ON public.user_roles(role_id);
+CREATE INDEX IF NOT EXISTS idx_user_roles_user ON public.user_roles(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_roles_role ON public.user_roles(role_id);
+
+-- Seed System Roles
+INSERT INTO public.roles (id, name, description)
+VALUES
+  ('SUPER_ADMIN', 'Super Administrator', 'Full administrative authority and platform control'),
+  ('ADMIN', 'Administrator', 'Administrative portal access to manage content, clients, and WhatsApp AI bot'),
+  ('COACH', 'Coach', 'Coaching calendar, 1-on-1 calls, and client progress management'),
+  ('CUSTOMER', 'Customer', 'Client enrolled in guided or custom programmes')
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description;
 
 -- 3. SERVICES
-CREATE TABLE public.services (
+CREATE TABLE IF NOT EXISTS public.services (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   type service_type NOT NULL,
   slug TEXT UNIQUE NOT NULL,
@@ -93,20 +96,21 @@ CREATE TABLE public.services (
 );
 
 -- 4. ORDERS (Permanent Ledger)
-CREATE TABLE public.orders (
+CREATE TABLE IF NOT EXISTS public.orders (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   order_reference TEXT UNIQUE NOT NULL,
   customer_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   customer_name TEXT,
   customer_email TEXT NOT NULL,
+  customer_phone TEXT,
   service_id TEXT REFERENCES public.services(id) ON DELETE SET NULL,
-  service_name TEXT,
-  selar_product_id TEXT,
-  payment_provider TEXT DEFAULT 'SELAR',
-  payment_status payment_status DEFAULT 'PENDING',
-  transaction_reference TEXT UNIQUE,
+  service_title TEXT NOT NULL,
   amount NUMERIC NOT NULL,
   currency TEXT DEFAULT 'KES',
+  payment_method TEXT DEFAULT 'SELAR_PAYSTACK',
+  payment_status payment_status DEFAULT 'PENDING',
+  payment_reference TEXT,
+  idempotency_key TEXT UNIQUE,
   discount_amount NUMERIC DEFAULT 0,
   coupon_code TEXT,
   metadata JSONB DEFAULT '{}',
@@ -115,7 +119,7 @@ CREATE TABLE public.orders (
 );
 
 -- 5. ENTITLEMENTS (Customer Access Rights)
-CREATE TABLE public.entitlements (
+CREATE TABLE IF NOT EXISTS public.entitlements (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   customer_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
   service_id TEXT REFERENCES public.services(id) ON DELETE CASCADE,
@@ -130,7 +134,7 @@ CREATE TABLE public.entitlements (
 );
 
 -- 6. PROGRAMMES, MODULES, & LESSONS
-CREATE TABLE public.programmes (
+CREATE TABLE IF NOT EXISTS public.programmes (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   service_id TEXT REFERENCES public.services(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
@@ -142,7 +146,7 @@ CREATE TABLE public.programmes (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE public.programme_modules (
+CREATE TABLE IF NOT EXISTS public.programme_modules (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   programme_id TEXT REFERENCES public.programmes(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
@@ -151,7 +155,7 @@ CREATE TABLE public.programme_modules (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE public.lessons (
+CREATE TABLE IF NOT EXISTS public.lessons (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   module_id TEXT REFERENCES public.programme_modules(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
@@ -166,7 +170,7 @@ CREATE TABLE public.lessons (
 );
 
 -- 7. REFLECTIONS & JOURNALING
-CREATE TABLE public.reflection_questions (
+CREATE TABLE IF NOT EXISTS public.reflection_questions (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   module_id TEXT REFERENCES public.programme_modules(id) ON DELETE CASCADE,
   question TEXT NOT NULL,
@@ -174,7 +178,7 @@ CREATE TABLE public.reflection_questions (
   "order" INT NOT NULL DEFAULT 1
 );
 
-CREATE TABLE public.reflections (
+CREATE TABLE IF NOT EXISTS public.reflections (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
   programme_id TEXT REFERENCES public.programmes(id) ON DELETE CASCADE,
@@ -187,7 +191,7 @@ CREATE TABLE public.reflections (
 );
 
 -- 8. COACHES & INTERPERSONAL BOOKINGS
-CREATE TABLE public.coaches (
+CREATE TABLE IF NOT EXISTS public.coaches (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   name TEXT NOT NULL,
   title TEXT NOT NULL,
@@ -199,7 +203,7 @@ CREATE TABLE public.coaches (
   session_duration_minutes INT DEFAULT 60
 );
 
-CREATE TABLE public.bookings (
+CREATE TABLE IF NOT EXISTS public.bookings (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   customer_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   customer_name TEXT NOT NULL,
@@ -221,12 +225,12 @@ CREATE TABLE public.bookings (
 );
 
 -- Anti-double-booking unique index for confirmed / pending holds
-CREATE UNIQUE INDEX idx_unique_coach_slot 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_coach_slot 
 ON public.bookings (coach_id, scheduled_date, start_time) 
 WHERE booking_status IN ('CONFIRMED', 'PENDING_PAYMENT');
 
 -- 9. GOAL TRACKING
-CREATE TABLE public.goals (
+CREATE TABLE IF NOT EXISTS public.goals (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
@@ -240,7 +244,7 @@ CREATE TABLE public.goals (
 );
 
 -- 10. AI KNOWLEDGE BASE & AUDIT LOGS
-CREATE TABLE public.knowledge_documents (
+CREATE TABLE IF NOT EXISTS public.knowledge_documents (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   title TEXT NOT NULL,
   category TEXT NOT NULL,
@@ -262,7 +266,7 @@ CREATE TABLE IF NOT EXISTS public.platform_audit_logs (
 );
 
 -- 10B. WHATSAPP BUSINESS & AI CHATBOT TABLES
-CREATE TABLE public.whatsapp_contacts (
+CREATE TABLE IF NOT EXISTS public.whatsapp_contacts (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   phone_number TEXT UNIQUE NOT NULL,
   whatsapp_user_id TEXT,
@@ -275,7 +279,7 @@ CREATE TABLE public.whatsapp_contacts (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE public.whatsapp_conversations (
+CREATE TABLE IF NOT EXISTS public.whatsapp_conversations (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   contact_id TEXT REFERENCES public.whatsapp_contacts(id) ON DELETE CASCADE,
   user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
@@ -292,7 +296,7 @@ CREATE TABLE public.whatsapp_conversations (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE public.whatsapp_messages (
+CREATE TABLE IF NOT EXISTS public.whatsapp_messages (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   conversation_id TEXT REFERENCES public.whatsapp_conversations(id) ON DELETE CASCADE,
   direction TEXT NOT NULL,
@@ -304,7 +308,7 @@ CREATE TABLE public.whatsapp_messages (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE public.whatsapp_config (
+CREATE TABLE IF NOT EXISTS public.whatsapp_config (
   id TEXT PRIMARY KEY DEFAULT 'default-config',
   phone_number_id TEXT,
   business_account_id TEXT,
@@ -323,6 +327,8 @@ CREATE TABLE public.whatsapp_config (
 
 -- 11. ENABLE ROW-LEVEL SECURITY
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.roles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.entitlements ENABLE ROW LEVEL SECURITY;
@@ -340,6 +346,15 @@ ALTER TABLE public.whatsapp_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.whatsapp_config ENABLE ROW LEVEL SECURITY;
 
 -- 12. RLS POLICIES
+DROP POLICY IF EXISTS "Allow read access to roles" ON public.roles;
+CREATE POLICY "Allow read access to roles" ON public.roles FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow read access to user_roles" ON public.user_roles;
+CREATE POLICY "Allow read access to user_roles" ON public.user_roles FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow all on user_roles" ON public.user_roles;
+CREATE POLICY "Allow all on user_roles" ON public.user_roles FOR ALL USING (true);
+
 -- Profiles
 DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
@@ -426,6 +441,15 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
+-- Auto-promote any existing Supabase Auth users to ADMIN
+INSERT INTO public.user_roles (user_id, role_id)
+SELECT id, 'ADMIN' FROM auth.users
+ON CONFLICT (user_id, role_id) DO NOTHING;
+
+UPDATE public.profiles
+SET role = 'ADMIN'
+WHERE id IN (SELECT id FROM auth.users);
+
 -- =========================================================================
 -- INITIAL SEED DATA
 -- =========================================================================
@@ -483,7 +507,8 @@ VALUES
   'https://selar.com/v09683c927',
   true,
   true
-);
+)
+ON CONFLICT (id) DO NOTHING;
 
 -- Seed Lead Coach Zipporah Karanja
 INSERT INTO public.coaches (id, name, title, bio, avatar_url, email, phone, available_days, session_duration_minutes)
@@ -497,7 +522,8 @@ VALUES (
   '+254 700 000 000',
   ARRAY['Tuesday', 'Wednesday', 'Thursday', 'Saturday'],
   60
-);
+)
+ON CONFLICT (id) DO NOTHING;
 
 -- Seed Guided Programme
 INSERT INTO public.programmes (id, service_id, title, subtitle, description, overview, image_url, is_published)
@@ -510,7 +536,8 @@ VALUES (
   'Welcome to your sacred space of transformation. Over the next four modules, you will explore who you were, realign with who you are, and intentionally author the woman you are becoming.',
   'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=800',
   true
-);
+)
+ON CONFLICT (id) DO NOTHING;
 
 -- Seed Modules
 INSERT INTO public.programme_modules (id, programme_id, title, description, "order")
@@ -518,7 +545,8 @@ VALUES
 ('mod-1', 'prog-guided-01', 'Module 1: The Awakening & Unlearning', 'Examine the inherited narratives, limiting beliefs, and external expectations that no longer serve your evolution.', 1),
 ('mod-2', 'prog-guided-01', 'Module 2: The Core Identity & Self-Concept', 'Anchor into your core values, rebuild self-trust, and calibrate your daily self-talk.', 2),
 ('mod-3', 'prog-guided-01', 'Module 3: Purpose, Vision & Daily Rituals', 'Translate lofty dreams into concrete daily micro-habits, rituals, and creative flow states.', 3),
-('mod-4', 'prog-guided-01', 'Module 4: Integration, Elevation & Sovereignty', 'Sustain your growth, navigate setbacks with grace, and walk in perpetual alignment.', 4);
+('mod-4', 'prog-guided-01', 'Module 4: Integration, Elevation & Sovereignty', 'Sustain your growth, navigate setbacks with grace, and walk in perpetual alignment.', 4)
+ON CONFLICT (id) DO NOTHING;
 
 -- Seed Lessons
 INSERT INTO public.lessons (id, module_id, title, duration, description, content, "order")
@@ -531,7 +559,8 @@ VALUES
 ('les-3-1', 'mod-3', 'Designing Sacred Morning & Evening Architecture', '14 mins', 'Crafting rituals that protect mental clarity.', 'How you start your day determines your sovereignty. Learn how to reclaim the first 60 minutes from digital clutter.', 1),
 ('les-3-2', 'mod-3', 'Audacious Goals with Gentle Execution', '20 mins', 'Goal-setting through feminine flow and ease.', 'Feminine ambition is not about exhaustion or hustle culture. It is rooted in ease, strategy, and self-compassion.', 2),
 ('les-4-1', 'mod-4', 'Navigating Triggers & Old Relapses', '19 mins', 'Building psychological resilience against setbacks.', 'Growth is cyclical, not linear. When you experience a setback, it is not failure; it is an invitation for deeper integration.', 1),
-('les-4-2', 'mod-4', 'Your Manifesto: Living as Her', '25 mins', 'Writing and committing to your Becoming Her Manifesto.', 'This is your graduation into sovereignty. You now possess the inner compass and emotional tools to flourish permanently.', 2);
+('les-4-2', 'mod-4', 'Your Manifesto: Living as Her', '25 mins', 'Writing and committing to your Becoming Her Manifesto.', 'This is your graduation into sovereignty. You now possess the inner compass and emotional tools to flourish permanently.', 2)
+ON CONFLICT (id) DO NOTHING;
 
 -- Seed Reflection Questions
 INSERT INTO public.reflection_questions (id, module_id, question, placeholder, "order")
@@ -540,23 +569,5 @@ VALUES
 ('ref-1-2', 'mod-1', 'Where in your life are you over-functioning or people-pleasing at the expense of your peace?', 'Detail situations, relationships, or work demands...', 2),
 ('ref-2-1', 'mod-2', 'How would you describe the woman you are becoming in five vivid adjectives?', 'e.g., Grounded, Radiant, Unapologetic, Strategic, Peaceful...', 1),
 ('ref-3-1', 'mod-3', 'What is one bold desire you have whispered in secret that you are now ready to declare out loud?', 'Your authentic vision...', 1),
-('ref-4-1', 'mod-4', 'What promise will you make to yourself today as you complete this sacred chapter?', 'My unwavering commitment to myself...', 1);
-
--- =========================================================================
--- ADMINISTRATOR ROLE MANAGEMENT & PROMOTION HELPER
--- =========================================================================
--- By default, all newly registered accounts receive role = 'CUSTOMER' and are
--- strictly barred from accessing the administrative portal (/admin/*).
---
--- To promote an authorized user to Administrator:
--- UPDATE public.profiles
--- SET role = 'ADMIN'
--- WHERE id = (SELECT id FROM auth.users WHERE email = 'zipporah@becomingher.co.ke');
---
--- To promote to Super Admin:
--- UPDATE public.profiles
--- SET role = 'SUPER_ADMIN'
--- WHERE id = (SELECT id FROM auth.users WHERE email = 'admin@becomingher.co.ke');
---
--- Note: Accounts matching DEFAULT_ADMIN_EMAILS or the ADMIN_EMAILS env variable
--- in src/lib/auth/roles.ts are also automatically granted administrator access.
+('ref-4-1', 'mod-4', 'What promise will you make to yourself today as you complete this sacred chapter?', 'My unwavering commitment to myself...', 1)
+ON CONFLICT (id) DO NOTHING;
