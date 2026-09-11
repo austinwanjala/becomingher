@@ -21,6 +21,8 @@ DROP TABLE IF EXISTS public.coaches CASCADE;
 DROP TABLE IF EXISTS public.entitlements CASCADE;
 DROP TABLE IF EXISTS public.orders CASCADE;
 DROP TABLE IF EXISTS public.services CASCADE;
+DROP TABLE IF EXISTS public.user_roles CASCADE;
+DROP TABLE IF EXISTS public.roles CASCADE;
 DROP TABLE IF EXISTS public.profiles CASCADE;
 
 DROP TYPE IF EXISTS user_role CASCADE;
@@ -48,6 +50,26 @@ CREATE TABLE public.profiles (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- 2B. ROLES & USER_ROLES TABLES
+CREATE TABLE public.roles (
+  id TEXT PRIMARY KEY,
+  name TEXT UNIQUE NOT NULL,
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE public.user_roles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  role_id TEXT REFERENCES public.roles(id) ON DELETE CASCADE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, role_id)
+);
+
+CREATE INDEX idx_user_roles_user ON public.user_roles(user_id);
+CREATE INDEX idx_user_roles_role ON public.user_roles(role_id);
 
 -- 3. SERVICES
 CREATE TABLE public.services (
@@ -361,12 +383,40 @@ CREATE POLICY "Users can manage own goals" ON public.goals FOR ALL USING (auth.u
 DROP POLICY IF EXISTS "Users can view own bookings" ON public.bookings;
 CREATE POLICY "Users can view own bookings" ON public.bookings FOR SELECT USING (auth.uid() = customer_id);
 
--- 13. AUTO-PROFILE TRIGGER ON USER SIGNUP
+-- 13. AUTO-PROFILE & ROLE TRIGGER ON USER CREATION
+-- Users created directly under Supabase Authentication -> ADMIN
+-- Users registered via the public customer portal (/register) -> CUSTOMER
 CREATE OR REPLACE FUNCTION public.handle_new_user() 
 RETURNS TRIGGER AS $$
+DECLARE
+  assigned_role TEXT;
+  user_name TEXT;
 BEGIN
+  user_name := COALESCE(new.raw_user_meta_data->>'name', 'Member');
+
+  -- If created directly from Supabase Dashboard Authentication, assign ADMIN.
+  -- Only users registering via the public customer portal (/register) have registered_via = 'customer'.
+  IF (new.raw_user_meta_data->>'registered_via' = 'customer') OR (new.raw_user_meta_data->>'source' = 'website') THEN
+    assigned_role := 'CUSTOMER';
+  ELSE
+    assigned_role := 'ADMIN';
+  END IF;
+
+  -- Insert/update profiles
   INSERT INTO public.profiles (id, full_name, role)
-  VALUES (new.id, COALESCE(new.raw_user_meta_data->>'name', 'Beloved Member'), 'CUSTOMER');
+  VALUES (new.id, user_name, assigned_role::user_role)
+  ON CONFLICT (id) DO UPDATE SET
+    full_name = EXCLUDED.full_name,
+    role = EXCLUDED.role;
+
+  -- Insert into user_roles
+  INSERT INTO public.user_roles (user_id, role_id)
+  VALUES (new.id, assigned_role)
+  ON CONFLICT (user_id, role_id) DO NOTHING;
+
+  -- Sync raw_app_meta_data for JWT presence
+  new.raw_app_meta_data := jsonb_set(COALESCE(new.raw_app_meta_data, '{}'::jsonb), '{role}', to_jsonb(assigned_role));
+
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

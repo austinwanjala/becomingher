@@ -46,7 +46,7 @@ export async function adminLogin(formData: FormData) {
     )
   }
 
-  // Ensure admin profile exists in database
+  // Ensure admin role and profile exist in database
   try {
     const adminName = data.user.user_metadata?.name || email.split('@')[0];
     await supabase.from('profiles').upsert(
@@ -57,8 +57,15 @@ export async function adminLogin(formData: FormData) {
       },
       { onConflict: 'id' }
     );
+    await supabase.from('user_roles').upsert(
+      {
+        user_id: data.user.id,
+        role_id: role,
+      },
+      { onConflict: 'user_id,role_id' }
+    );
   } catch {
-    // Ignore profile upsert errors
+    // Ignore database table sync errors
   }
 
   revalidatePath('/admin', 'layout')

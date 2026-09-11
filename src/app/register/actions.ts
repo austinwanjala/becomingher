@@ -29,6 +29,7 @@ export async function signup(formData: FormData) {
       data: {
         name: name || 'Beloved Member',
         phone: phone || '',
+        registered_via: 'customer',
       }
     }
   })

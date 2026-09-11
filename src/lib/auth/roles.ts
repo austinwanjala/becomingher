@@ -39,23 +39,24 @@ export async function getUserRole(
 ): Promise<UserRole> {
   if (!user) return 'CUSTOMER';
 
-  // 1. Check user JWT / metadata (set via Supabase Dashboard metadata or auth API)
-  const metaRole = (user.app_metadata?.role || user.user_metadata?.role || user.app_metadata?.user_role || user.user_metadata?.user_role);
-  if (metaRole && typeof metaRole === 'string') {
-    const r = metaRole.toUpperCase().trim();
-    if (r === 'SUPER_ADMIN' || r === 'ADMIN' || r === 'COACH' || r === 'CUSTOMER') {
-      return r as UserRole;
-    }
-  }
+  // 1. Query the newly created `public.user_roles` table in Supabase
+  if (supabaseClient && user.id) {
+    try {
+      const { data: userRoleRecord } = await supabaseClient
+        .from('user_roles')
+        .select('role_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-  // Check boolean flags in metadata (e.g. { "isAdmin": true } or { "is_admin": true })
-  if (
-    user.app_metadata?.isAdmin === true ||
-    user.app_metadata?.is_admin === true ||
-    user.user_metadata?.isAdmin === true ||
-    user.user_metadata?.is_admin === true
-  ) {
-    return 'ADMIN';
+      if (userRoleRecord?.role_id) {
+        const r = (userRoleRecord.role_id as string).toUpperCase().trim();
+        if (r === 'SUPER_ADMIN' || r === 'ADMIN' || r === 'COACH' || r === 'CUSTOMER') {
+          return r as UserRole;
+        }
+      }
+    } catch {
+      // user_roles table not yet populated or accessible
+    }
   }
 
   // 2. Query the Supabase database `public.profiles` table
@@ -78,10 +79,29 @@ export async function getUserRole(
     }
   }
 
-  // 3. Check administrative email patterns and whitelists
+  // 3. Check user JWT / metadata (set via Supabase Dashboard metadata or auth API)
+  const metaRole = (user.app_metadata?.role || user.user_metadata?.role || user.app_metadata?.user_role || user.user_metadata?.user_role);
+  if (metaRole && typeof metaRole === 'string') {
+    const r = metaRole.toUpperCase().trim();
+    if (r === 'SUPER_ADMIN' || r === 'ADMIN' || r === 'COACH' || r === 'CUSTOMER') {
+      return r as UserRole;
+    }
+  }
+
+  // Check boolean flags in metadata (e.g. { "isAdmin": true } or { "is_admin": true })
+  if (
+    user.app_metadata?.isAdmin === true ||
+    user.app_metadata?.is_admin === true ||
+    user.user_metadata?.isAdmin === true ||
+    user.user_metadata?.is_admin === true
+  ) {
+    return 'ADMIN';
+  }
+
+  // 4. Check administrative email patterns and whitelists
   const email = (user.email || '').toLowerCase().trim();
   if (email) {
-    // 3A. Auto-detect administrative email prefixes or official domain
+    // 4A. Auto-detect administrative email prefixes or official domain
     if (
       email.startsWith('admin') ||
       email.startsWith('superadmin') ||
@@ -92,7 +112,7 @@ export async function getUserRole(
       return 'ADMIN';
     }
 
-    // 3B. Check explicit environment or default whitelists
+    // 4B. Check explicit environment or default whitelists
     const envAdminEmails = (process.env.ADMIN_EMAILS || '')
       .split(',')
       .map((e) => e.trim().toLowerCase())
@@ -104,6 +124,15 @@ export async function getUserRole(
     }
   }
 
-  // Security default: Any user created or registered without explicit admin grant is a CUSTOMER
-  return 'CUSTOMER';
+  // 5. Direct Supabase Authenticated User Detection:
+  // Customers registered on the public website explicitly have registered_via: 'customer'.
+  // Any user created directly from authenticated users in the Supabase Dashboard
+  // lacks this flag and should log in as an administrator.
+  const registeredVia = user.user_metadata?.registered_via || user.app_metadata?.registered_via;
+  if (registeredVia === 'customer' || user.user_metadata?.source === 'website') {
+    return 'CUSTOMER';
+  }
+
+  // Users created directly from authenticated users in Supabase Dashboard default to ADMIN
+  return 'ADMIN';
 }
