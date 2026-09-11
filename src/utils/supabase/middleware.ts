@@ -67,7 +67,9 @@ export async function updateSession(request: NextRequest) {
       url.pathname = '/admin/login';
       url.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search);
       url.searchParams.set('message', 'Please sign in with your administrative account to access the console.');
-      return NextResponse.redirect(url);
+      const res = NextResponse.redirect(url);
+      supabaseResponse.cookies.getAll().forEach((cookie) => res.cookies.set(cookie.name, cookie.value, cookie));
+      return res;
     }
 
     // Authenticated user attempting to access /admin/*: ensure they are not a Customer
@@ -79,7 +81,9 @@ export async function updateSession(request: NextRequest) {
         'message',
         'Access Denied: Your account is registered as a Customer. Only users created as Administrators can access the administrative portal.'
       );
-      return NextResponse.redirect(url);
+      const res = NextResponse.redirect(url);
+      supabaseResponse.cookies.getAll().forEach((cookie) => res.cookies.set(cookie.name, cookie.value, cookie));
+      return res;
     }
   }
 
@@ -89,7 +93,9 @@ export async function updateSession(request: NextRequest) {
     url.pathname = '/login';
     url.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search);
     url.searchParams.set('message', 'Please sign in to access your Customer Portal.');
-    return NextResponse.redirect(url);
+    const res = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => res.cookies.set(cookie.name, cookie.value, cookie));
+    return res;
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is. If you're

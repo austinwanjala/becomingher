@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { BrandLogo } from '@/components/BrandLogo';
 import { createClient } from '@/utils/supabase/client';
+import { performClientSignOut } from '@/lib/auth/session';
 
 export default function CustomerDashboardLayout({
   children,
@@ -29,28 +30,38 @@ export default function CustomerDashboardLayout({
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isVerifying, setIsVerifying] = useState(true);
   const supabase = createClient();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(({ data: { user }, error }) => {
+      if (!user || error) {
+        // Redirect to login page immediately with return url
+        const target = pathname && pathname.startsWith('/dashboard') ? pathname : '/dashboard';
+        window.location.href = `/login?redirect=${encodeURIComponent(target)}&message=${encodeURIComponent('Please sign in to access your Customer Portal.')}`;
+        return;
+      }
       setCurrentUser(user);
+      setIsVerifying(false);
     });
 
     const {
       data: { subscription }
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        window.location.href = `/login?redirect=${encodeURIComponent(pathname || '/dashboard')}&message=${encodeURIComponent('Your session has ended. Please sign in to access your Customer Portal.')}`;
+        return;
+      }
       setCurrentUser(session?.user || null);
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [pathname]);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    router.push('/');
-    router.refresh();
+    await performClientSignOut('/login?message=' + encodeURIComponent('You have been signed out successfully. Please sign in to access your Customer Portal.'));
   };
 
   const navItems = [
@@ -64,6 +75,20 @@ export default function CustomerDashboardLayout({
 
   const displayName = currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Beloved Member';
   const initial = displayName.charAt(0).toUpperCase();
+
+  if (isVerifying) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FAF8F5] p-4 text-stone-900">
+        <div className="flex flex-col items-center space-y-4">
+          <BrandLogo href="/" size="md" variant="light" />
+          <div className="flex items-center gap-2 text-xs text-rose-900 font-medium">
+            <span className="w-2 h-2 rounded-full bg-rose-700 animate-ping" />
+            <span>Verifying sanctuary session...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#FAF8F5] text-stone-900">

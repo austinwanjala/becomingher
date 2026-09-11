@@ -2,7 +2,7 @@
 
 import { ShieldCheck, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/utils/supabase/client';
+import { performClientSignOut } from '@/lib/auth/session';
 
 interface AdminUserBadgeProps {
   email: string;
@@ -12,12 +12,9 @@ interface AdminUserBadgeProps {
 
 export function AdminUserBadge({ email, name, role = 'ADMIN' }: AdminUserBadgeProps) {
   const router = useRouter();
-  const supabase = createClient();
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    router.push('/admin/login?message=' + encodeURIComponent('You have been securely signed out of the Administrative Console.'));
-    router.refresh();
+    await performClientSignOut('/admin/login?message=' + encodeURIComponent('You have been securely signed out of the Administrative Console.'));
   };
 
   const formattedRole = role.replace('_', ' ');

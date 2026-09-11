@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Menu, X, Sparkles, User, LogOut, BookOpen, Calendar, CreditCard } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import { BrandLogo } from '@/components/BrandLogo';
+import { performClientSignOut } from '@/lib/auth/session';
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -25,16 +26,19 @@ export function Navbar() {
       setUser(session?.user || null);
     });
 
+    const handleAuthEvent = (e: CustomEvent) => {
+      setUser(e.detail?.user || null);
+    };
+    window.addEventListener('becoming_her_auth_changed' as any, handleAuthEvent);
+
     return () => {
       subscription.unsubscribe();
+      window.removeEventListener('becoming_her_auth_changed' as any, handleAuthEvent);
     };
   }, []);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    router.push('/');
-    router.refresh();
+    await performClientSignOut('/login?message=' + encodeURIComponent('You have been signed out successfully. Please sign in to access your Customer Portal.'));
   };
 
   const navLinks = [
@@ -94,16 +98,23 @@ export function Navbar() {
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
+              <Link
+                href="/login?redirect=/dashboard"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-stone-300 hover:border-rose-400 bg-stone-50 hover:bg-rose-50/70 text-stone-800 hover:text-rose-950 text-xs font-semibold transition shadow-xs"
+              >
+                <User className="w-3.5 h-3.5 text-rose-800" />
+                <span>Customer Portal</span>
+              </Link>
               <Link
                 href="/login"
-                className="text-sm font-medium text-stone-700 hover:text-rose-900 transition px-3 py-2"
+                className="text-xs font-medium text-stone-700 hover:text-rose-900 transition px-2 py-1.5"
               >
                 Sign In
               </Link>
               <Link
                 href="/register"
-                className="inline-flex items-center justify-center px-4 py-2 rounded-full text-xs font-semibold bg-rose-100 text-rose-950 hover:bg-rose-200 transition"
+                className="inline-flex items-center justify-center px-3.5 py-1.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-950 hover:bg-rose-200 transition"
               >
                 Create Account
               </Link>
@@ -164,21 +175,31 @@ export function Navbar() {
                 </button>
               </>
             ) : (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-2">
                 <Link
-                  href="/login"
+                  href="/login?redirect=/dashboard"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="py-2.5 text-center text-xs font-medium text-stone-800 bg-stone-100 rounded-xl"
+                  className="flex items-center justify-center gap-2 w-full py-2.5 px-4 text-center text-sm font-semibold text-rose-950 bg-rose-100/90 hover:bg-rose-100 rounded-xl transition"
                 >
-                  Sign In
+                  <User className="w-4 h-4 text-rose-800" />
+                  <span>Customer Portal</span>
                 </Link>
-                <Link
-                  href="/register"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="py-2.5 text-center text-xs font-medium bg-rose-950 text-white rounded-xl"
-                >
-                  Create Account
-                </Link>
+                <div className="grid grid-cols-2 gap-2">
+                  <Link
+                    href="/login"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="py-2.5 text-center text-xs font-medium text-stone-800 bg-stone-100 rounded-xl"
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    href="/register"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="py-2.5 text-center text-xs font-semibold bg-stone-900 text-amber-50 hover:bg-rose-950 rounded-xl transition"
+                  >
+                    Create Account
+                  </Link>
+                </div>
               </div>
             )}
             <Link

@@ -7,6 +7,9 @@ import Link from 'next/link'
 import { Sparkles, AlertCircle, ArrowLeft } from 'lucide-react'
 import { BrandLogo } from '@/components/BrandLogo'
 
+import { redirect } from 'next/navigation'
+import { createClient } from '@/utils/supabase/server'
+
 export default async function LoginPage({
   searchParams,
 }: {
@@ -17,6 +20,15 @@ export default async function LoginPage({
   // Strictly isolate customer portal: /login must never redirect into /admin
   const rawRedirect = params.redirect || '/dashboard';
   const redirectTarget = rawRedirect.startsWith('/admin') ? '/dashboard' : rawRedirect;
+
+  // If user is already authenticated and didn't arrive via an explicit message/sign-out, redirect to target
+  if (!message) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      redirect(redirectTarget);
+    }
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#FAF8F5] p-4 text-stone-900 relative">
