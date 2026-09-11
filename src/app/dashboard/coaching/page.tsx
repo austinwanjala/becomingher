@@ -59,7 +59,8 @@ How is your spirit feeling today, and what area of your personal elevation would
 
     const userText = inputMessage.trim();
     setInputMessage('');
-    setMessages((prev) => [...prev, { role: 'user', content: userText }]);
+    const updatedMessages = [...messages, { role: 'user' as const, content: userText }];
+    setMessages(updatedMessages);
     setIsSending(true);
 
     try {
@@ -68,6 +69,45 @@ How is your spirit feeling today, and what area of your personal elevation would
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: userText,
+          history: updatedMessages.map((m) => ({ role: m.role, content: m.content })),
+          userContext: {
+            name: 'Grace Mwangi',
+            programme: 'Guided Digital Coaching Programme',
+            goals: goals.map((g) => g.title).join(', ')
+          }
+        })
+      });
+
+      const data = await res.json();
+      if (data.reply) {
+        setMessages((prev) => [...prev, { role: 'assistant', content: data.reply }]);
+      }
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: 'I am here with you, beloved. Take a deep breath. Let us re-focus on the quiet wisdom inside your heart.'
+        }
+      ]);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleAskPrompt = async (promptText: string) => {
+    if (isSending) return;
+    const updatedMessages = [...messages, { role: 'user' as const, content: promptText }];
+    setMessages(updatedMessages);
+    setIsSending(true);
+
+    try {
+      const res = await fetch('/api/ai/coach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: promptText,
+          history: updatedMessages.map((m) => ({ role: m.role, content: m.content })),
           userContext: {
             name: 'Grace Mwangi',
             programme: 'Guided Digital Coaching Programme',
@@ -267,6 +307,28 @@ How is your spirit feeling today, and what area of your personal elevation would
                 <span>Reflecting on your intention...</span>
               </div>
             )}
+          </div>
+
+          {/* Suggested Coaching Topics */}
+          <div className="px-4 py-2 bg-stone-50/80 border-t border-stone-100 flex items-center gap-1.5 overflow-x-auto text-[11px] scrollbar-none">
+            <span className="text-stone-400 shrink-0 font-medium mr-1">Ask:</span>
+            {[
+              'How do I overcome imposter syndrome?',
+              'How do I set boundaries without guilt?',
+              'Give me a journaling prompt for today',
+              'How do I navigate burnout & rest?',
+              'How do I book a 1-on-1 session with Coach Zipporah?'
+            ].map((prompt, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => handleAskPrompt(prompt)}
+                disabled={isSending}
+                className="shrink-0 px-3 py-1 rounded-full bg-white hover:bg-rose-50 hover:text-rose-900 border border-stone-200 text-stone-700 transition disabled:opacity-50"
+              >
+                {prompt}
+              </button>
+            ))}
           </div>
 
           {/* Input Box */}

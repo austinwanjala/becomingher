@@ -1,6 +1,7 @@
 import { store } from '../store';
 import { whatsAppClient } from './client';
 import { WhatsAppConversationState } from '@/types';
+import { coachingEngine } from '../coaching/engine';
 
 interface ProcessMessageInput {
   from: string; // phone number
@@ -730,7 +731,7 @@ export class WhatsAppEngine {
     // 9. GENERAL COACHING / DISCOVERY (Grounded in answered questions)
     // -------------------------------------------------------------------------
     if (state === 'DISCOVERY' || state === 'COACHING' || state === 'CUSTOMER_ACTIVE') {
-      let coachingGuidance = this.generateEmpatheticCoaching(text);
+      let coachingGuidance = this.generateEmpatheticCoaching(text, contactName);
 
       // If user has answered reflections or questionnaire, ground the response directly in their actual words!
       if (returningInfo?.reflections && returningInfo.reflections.length > 0) {
@@ -797,26 +798,13 @@ export class WhatsAppEngine {
   /**
    * Generates empathetic, non-robotic preliminary coaching
    */
-  private generateEmpatheticCoaching(text: string): string {
-    const lower = text.toLowerCase();
-
-    if (lower.includes('stuck') || lower.includes('lost') || lower.includes('overwhelm') || lower.includes('tired')) {
-      return "I hear you, and please take a gentle breath. Feeling stuck is often not a sign of failure—it is your inner self signaling that you have outgrown where you are right now. The first step is giving yourself permission to pause and reflect on what no longer serves you.";
-    }
-
-    if (lower.includes('career') || lower.includes('job') || lower.includes('business') || lower.includes('work')) {
-      return "Stepping into your purpose in your career or work takes real intention. It requires aligning your unique gifts with clear boundaries and confident self-advocacy. You don't have to shrink to fit into rooms that were too small for you.";
-    }
-
-    if (lower.includes('relationship') || lower.includes('heartbreak') || lower.includes('love') || lower.includes('family')) {
-      return "Relationships teach us so much about our own boundaries and worth. When you cultivate a deeply rooted relationship with yourself first, you teach the world how to honor and cherish you.";
-    }
-
-    if (lower.includes('confidence') || lower.includes('fear') || lower.includes('doubt') || lower.includes('imposter')) {
-      return "Self-doubt is normal when you are on the brink of significant growth. Confidence isn't the absence of fear—it is choosing to believe in your divine capacity even while your hands shake.";
-    }
-
-    return "Thank you for sharing your heart so honestly. It takes immense self-awareness to identify where you desire change, and that desire alone is proof that you are ready for a new chapter.";
+  private generateEmpatheticCoaching(text: string, contactName: string = 'beloved'): string {
+    return coachingEngine.generateAutonomousCoaching(text, [], {
+      userName: contactName,
+      userReflections: [],
+      userGoals: [],
+      userQuestionnaire: null
+    });
   }
 
   /**
