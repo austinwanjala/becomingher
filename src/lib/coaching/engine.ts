@@ -161,57 +161,98 @@ RULES:
 3. Conclude with a deep, reflective coaching question that helps her connect to her inner truth.
 4. Keep the tone loving, dignified, and regal.`;
 
-    // 1. Google Gemini
-    if (geminiKey) {
+    // 1. OpenRouter Integration (if OPENROUTER_API_KEY is provided)
+    if (openRouterKey) {
       try {
-        const contents = [
-          { role: 'user', parts: [{ text: systemPrompt }] },
-          { role: 'model', parts: [{ text: 'Understood. I am ready to hold space for ' + ctx.userName + ' with love, clarity, and sovereign coaching guidance.' }] },
-          ...history.slice(-6).map((h) => ({
-            role: h.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: h.content }]
-          })),
-          { role: 'user', parts: [{ text: message }] }
+        const model = process.env.OPENROUTER_MODEL || 'google/gemini-2.0-flash-001';
+        const messages = [
+          { role: 'system', content: systemPrompt },
+          ...history.slice(-6).map((h) => ({ role: h.role, content: h.content })),
+          { role: 'user', content: message }
         ];
 
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents,
-              generationConfig: { maxOutputTokens: 600, temperature: 0.7 }
-            })
-          }
-        );
+        const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${openRouterKey.trim()}`,
+            'HTTP-Referer': 'https://becomingher.co.ke',
+            'X-Title': 'Becoming Her Sanctuary'
+          },
+          body: JSON.stringify({
+            model,
+            messages,
+            temperature: 0.7,
+            max_tokens: 700
+          })
+        });
 
         if (res.ok) {
           const data = await res.json();
-          const candidate = data.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (candidate) return candidate;
+          const reply = data.choices?.[0]?.message?.content;
+          if (reply && typeof reply === 'string') return reply.trim();
+        } else {
+          const errText = await res.text().catch(() => '');
+          console.warn('OpenRouter API returned non-OK status:', res.status, errText);
         }
       } catch (err) {
-        console.warn('Gemini invocation error:', err);
+        console.warn('OpenRouter invocation error:', err);
       }
     }
 
-    // 2. OpenAI / Groq / OpenRouter Compatible API
-    const openAICompatibleKey = openAIKey || groqKey || openRouterKey;
-    if (openAICompatibleKey) {
+    // 2. Google Gemini Integration (if GEMINI_API_KEY is provided)
+    if (geminiKey) {
+      const cleanGeminiKey = geminiKey.trim();
+      const modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+
+      for (const modelName of modelsToTry) {
+        try {
+          const contents = [
+            ...history.slice(-6).map((h) => ({
+              role: h.role === 'assistant' ? 'model' : 'user',
+              parts: [{ text: h.content }]
+            })),
+            { role: 'user', parts: [{ text: message }] }
+          ];
+
+          const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${cleanGeminiKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                systemInstruction: {
+                  parts: [{ text: systemPrompt }]
+                },
+                contents,
+                generationConfig: { maxOutputTokens: 700, temperature: 0.7 }
+              })
+            }
+          );
+
+          if (res.ok) {
+            const data = await res.json();
+            const candidate = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (candidate && typeof candidate === 'string') return candidate.trim();
+          } else {
+            const errText = await res.text().catch(() => '');
+            console.warn(`Gemini (${modelName}) non-OK:`, res.status, errText);
+          }
+        } catch (err) {
+          console.warn(`Gemini (${modelName}) invocation error:`, err);
+        }
+      }
+    }
+
+    // 3. OpenAI / Groq Compatible Fallback (if configured)
+    const otherKey = openAIKey || groqKey;
+    if (otherKey) {
       try {
         const endpoint = groqKey
           ? 'https://api.groq.com/openai/v1/chat/completions'
-          : openRouterKey
-          ? 'https://openrouter.ai/api/v1/chat/completions'
           : 'https://api.openai.com/v1/chat/completions';
 
-        const model = groqKey
-          ? 'llama-3.3-70b-versatile'
-          : openRouterKey
-          ? 'google/gemini-flash-1.5'
-          : 'gpt-4o-mini';
-
+        const model = groqKey ? 'llama-3.3-70b-versatile' : 'gpt-4o-mini';
         const messages = [
           { role: 'system', content: systemPrompt },
           ...history.slice(-6).map((h) => ({ role: h.role, content: h.content })),
@@ -222,23 +263,23 @@ RULES:
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${openAICompatibleKey}`
+            Authorization: `Bearer ${otherKey.trim()}`
           },
           body: JSON.stringify({
             model,
             messages,
             temperature: 0.7,
-            max_tokens: 600
+            max_tokens: 700
           })
         });
 
         if (res.ok) {
           const data = await res.json();
           const reply = data.choices?.[0]?.message?.content;
-          if (reply) return reply;
+          if (reply && typeof reply === 'string') return reply.trim();
         }
       } catch (err) {
-        console.warn('OpenAI compatible invocation error:', err);
+        console.warn('Other LLM invocation error:', err);
       }
     }
 
