@@ -2,6 +2,29 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { getUserRole, isAdminRole } from '@/lib/auth/roles'
 
+function getValidSupabaseUrl(rawUrl?: string): string | null {
+  if (!rawUrl) return null;
+  const trimmed = rawUrl.trim();
+  if (trimmed === 'your-supabase-url' || trimmed === 'placeholder' || !trimmed) {
+    return null;
+  }
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    try {
+      new URL(trimmed);
+      return trimmed;
+    } catch {
+      return null;
+    }
+  }
+  try {
+    const withHttps = `https://${trimmed}`;
+    new URL(withHttps);
+    return withHttps;
+  } catch {
+    return null;
+  }
+}
+
 export async function updateSession(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-pathname', request.nextUrl.pathname);
@@ -12,104 +35,105 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return supabaseResponse;
-  }
+  try {
+    const supabaseUrl = getValidSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value));
-          supabaseResponse = NextResponse.next({
-            request: {
-              headers: requestHeaders,
-            },
-          });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
-
-  // IMPORTANT: Avoid writing any logic between createServerClient and
-  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  // 1. Role-Based Admin route protection
-  if (request.nextUrl.pathname.startsWith('/admin')) {
-    if (request.nextUrl.pathname === '/admin/login') {
-      if (user) {
-        const role = await getUserRole(user, supabase);
-        // Only auto-redirect to /admin if the authenticated user is actually an Administrator
-        if (isAdminRole(role)) {
-          const url = request.nextUrl.clone();
-          url.pathname = '/admin';
-          return NextResponse.redirect(url);
-        }
-      }
+    // If Supabase environment variables are missing or invalid placeholders, bypass auth middleware safely
+    if (!supabaseUrl || !supabaseKey || supabaseKey === 'your-supabase-anon-key' || supabaseKey.length < 10) {
       return supabaseResponse;
     }
 
-    if (!user) {
+    const supabase = createServerClient(
+      supabaseUrl,
+      supabaseKey,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+            supabaseResponse = NextResponse.next({
+              request: {
+                headers: requestHeaders,
+              },
+            });
+            cookiesToSet.forEach(({ name, value, options }) =>
+              supabaseResponse.cookies.set(name, value, options)
+            );
+          },
+        },
+      }
+    );
+
+    let user = null;
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      if (!error && data?.user) {
+        user = data.user;
+      }
+    } catch (authErr) {
+      console.warn('Middleware getUser warning:', authErr);
+    }
+
+    // 1. Role-Based Admin route protection
+    if (request.nextUrl.pathname.startsWith('/admin')) {
+      if (request.nextUrl.pathname === '/admin/login') {
+        if (user) {
+          try {
+            const role = await getUserRole(user, supabase);
+            if (isAdminRole(role)) {
+              const url = request.nextUrl.clone();
+              url.pathname = '/admin';
+              return NextResponse.redirect(url);
+            }
+          } catch (_) {}
+        }
+        return supabaseResponse;
+      }
+
+      if (!user) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/admin/login';
+        url.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search);
+        url.searchParams.set('message', 'Please sign in with your administrative account to access the console.');
+        const res = NextResponse.redirect(url);
+        supabaseResponse.cookies.getAll().forEach((cookie) => res.cookies.set(cookie.name, cookie.value, cookie));
+        return res;
+      }
+
+      // Authenticated user attempting to access /admin/*: ensure they are an Administrator
+      try {
+        const role = await getUserRole(user, supabase);
+        if (!isAdminRole(role)) {
+          const url = request.nextUrl.clone();
+          url.pathname = '/admin/login';
+          url.searchParams.set(
+            'message',
+            'Access Denied: Your account is registered as a Customer. Only users created as Administrators can access the administrative portal.'
+          );
+          const res = NextResponse.redirect(url);
+          supabaseResponse.cookies.getAll().forEach((cookie) => res.cookies.set(cookie.name, cookie.value, cookie));
+          return res;
+        }
+      } catch (_) {}
+    }
+
+    // 2. Customer Dashboard protection
+    if (request.nextUrl.pathname.startsWith('/dashboard') && !user) {
       const url = request.nextUrl.clone();
-      url.pathname = '/admin/login';
+      url.pathname = '/login';
       url.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search);
-      url.searchParams.set('message', 'Please sign in with your administrative account to access the console.');
+      url.searchParams.set('message', 'Please sign in to access your Customer Portal.');
       const res = NextResponse.redirect(url);
       supabaseResponse.cookies.getAll().forEach((cookie) => res.cookies.set(cookie.name, cookie.value, cookie));
       return res;
     }
 
-    // Authenticated user attempting to access /admin/*: ensure they are not a Customer
-    const role = await getUserRole(user, supabase);
-    if (!isAdminRole(role)) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/admin/login';
-      url.searchParams.set(
-        'message',
-        'Access Denied: Your account is registered as a Customer. Only users created as Administrators can access the administrative portal.'
-      );
-      const res = NextResponse.redirect(url);
-      supabaseResponse.cookies.getAll().forEach((cookie) => res.cookies.set(cookie.name, cookie.value, cookie));
-      return res;
-    }
+    return supabaseResponse;
+  } catch (err) {
+    console.error('updateSession caught error, passing through:', err);
+    return supabaseResponse;
   }
-
-  // 2. Customer Dashboard protection
-  if (request.nextUrl.pathname.startsWith('/dashboard') && !user) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    url.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search);
-    url.searchParams.set('message', 'Please sign in to access your Customer Portal.');
-    const res = NextResponse.redirect(url);
-    supabaseResponse.cookies.getAll().forEach((cookie) => res.cookies.set(cookie.name, cookie.value, cookie));
-    return res;
-  }
-
-  // IMPORTANT: You *must* return the supabaseResponse object as it is. If you're
-  // creating a new response object with NextResponse.next() make sure to:
-  // 1. Pass the request in it, like so:
-  //    const myNewResponse = NextResponse.next({ request })
-  // 2. Copy over the cookies, like so:
-  //    myNewResponse.cookies.setAll(supabaseResponse.cookies.getAll())
-  // 3. Change the myNewResponse object to fit your needs, but avoid changing
-  //    the cookies!
-  // 4. Finally:
-  //    return myNewResponse
-  // If this is not done, you may be causing the browser and server to go out
-  // of sync and terminate the user's session prematurely!
-
-  return supabaseResponse
 }
