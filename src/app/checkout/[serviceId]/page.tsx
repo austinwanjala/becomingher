@@ -28,7 +28,6 @@ export default function CheckoutPage({ params }: { params: Promise<{ serviceId: 
   const service = store.getServiceById(resolvedParams.serviceId);
 
   // Authentication state
-  const supabase = createClient();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [authChecked, setAuthChecked] = useState(false);
 
@@ -50,6 +49,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ serviceId: 
 
   // Check authenticated session on mount
   useEffect(() => {
+    const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         setCurrentUser(user);

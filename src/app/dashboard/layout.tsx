@@ -21,6 +21,8 @@ import { BrandLogo } from '@/components/BrandLogo';
 import { createClient } from '@/utils/supabase/client';
 import { performClientSignOut } from '@/lib/auth/session';
 
+export const dynamic = 'force-dynamic';
+
 export default function CustomerDashboardLayout({
   children,
 }: {
@@ -31,9 +33,9 @@ export default function CustomerDashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isVerifying, setIsVerifying] = useState(true);
-  const supabase = createClient();
 
   useEffect(() => {
+    const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user }, error }) => {
       if (!user || error) {
         // Redirect to login page immediately with return url
