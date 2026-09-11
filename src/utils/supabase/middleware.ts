@@ -2,9 +2,14 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-pathname', request.nextUrl.pathname);
+
   let supabaseResponse = NextResponse.next({
-    request,
-  })
+    request: {
+      headers: requestHeaders,
+    },
+  });
 
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     return supabaseResponse;
@@ -16,20 +21,22 @@ export async function updateSession(request: NextRequest) {
     {
       cookies: {
         getAll() {
-          return request.cookies.getAll()
+          return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value));
           supabaseResponse = NextResponse.next({
-            request,
-          })
+            request: {
+              headers: requestHeaders,
+            },
+          });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
-          )
+          );
         },
       },
     }
-  )
+  );
 
   // IMPORTANT: Avoid writing any logic between createServerClient and
   // supabase.auth.getUser(). A simple mistake could make it very hard to debug
@@ -39,26 +46,32 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const isProtectedPath =
-    request.nextUrl.pathname.startsWith('/admin') ||
-    request.nextUrl.pathname.startsWith('/dashboard');
+  // 1. Admin route protection
+  if (request.nextUrl.pathname.startsWith('/admin')) {
+    if (request.nextUrl.pathname === '/admin/login') {
+      if (user) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/admin';
+        return NextResponse.redirect(url);
+      }
+      return supabaseResponse;
+    }
 
-  if (
-    !user &&
-    isProtectedPath &&
-    !request.nextUrl.pathname.startsWith('/login') &&
-    !request.nextUrl.pathname.startsWith('/register') &&
-    !request.nextUrl.pathname.startsWith('/auth')
-  ) {
+    if (!user) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/admin/login';
+      url.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search);
+      url.searchParams.set('message', 'Please sign in with your administrative account to access the console.');
+      return NextResponse.redirect(url);
+    }
+  }
+
+  // 2. Customer Dashboard protection
+  if (request.nextUrl.pathname.startsWith('/dashboard') && !user) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     url.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search);
-    url.searchParams.set(
-      'message',
-      request.nextUrl.pathname.startsWith('/admin')
-        ? 'Please sign in with your account to access the Admin Console.'
-        : 'Please sign in to access your Customer Portal.'
-    );
+    url.searchParams.set('message', 'Please sign in to access your Customer Portal.');
     return NextResponse.redirect(url);
   }
 

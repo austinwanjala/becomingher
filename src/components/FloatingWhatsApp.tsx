@@ -42,7 +42,7 @@ const DEFAULT_WELCOME_MESSAGE: ChatMessage = {
   createdAt: new Date().toISOString()
 };
 
-const OFFICIAL_WHATSAPP_PHONE = '254712345678';
+const OFFICIAL_WHATSAPP_PHONE = '254720120227';
 
 export function FloatingWhatsApp() {
   const pathname = usePathname();
@@ -221,6 +221,23 @@ export function FloatingWhatsApp() {
 
     return parts.map((line, lineIdx) => {
       const isInternalLink = line.includes('/register') || line.includes('/checkout') || line.includes('/dashboard');
+      const isWhatsAppLink = line.includes('wa.me');
+
+      if (isWhatsAppLink) {
+        return (
+          <span key={lineIdx} className="my-2 block">
+            <a
+              href="https://wa.me/254720120227?text=Hello%20Coach%20Zipporah!%20%F0%9F%8C%B8%20I'm%20reaching%20out%20from%20Becoming%20Her%20to%20speak%20with%20you%20directly."
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-semibold text-[11px] shadow-sm transition hover:scale-[1.02]"
+            >
+              <MessageCircle className="w-3.5 h-3.5 fill-white stroke-none" />
+              <span>Open WhatsApp with Coach (+254 720 120 227)</span>
+            </a>
+          </span>
+        );
+      }
 
       return (
         <span key={lineIdx} className="block min-h-[1.25em]">

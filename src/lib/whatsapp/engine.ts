@@ -91,12 +91,21 @@ export class WhatsAppEngine {
     // 5. Check for explicit Human Handoff request
     if (this.detectHumanHandoffIntent(text, buttonId)) {
       store.toggleHumanHandoff(conversation.id, true);
+      const directWaUrl = 'https://wa.me/254720120227?text=' + encodeURIComponent("Hello Coach Zipporah! 🌸 I'm reaching out from Becoming Her to speak with you directly.");
       const handoffMsg =
-        "I understand completely. I am alerting Coach Zipporah and our support team right now. " +
-        "Someone will personally join this chat shortly to assist you.\n\n" +
-        "💡 *Tip:* If you ever wish to resume chatting with our AI coach, simply text *RESUME*.";
+        "I understand completely. Coach Zipporah Karanja and our support team are available directly on WhatsApp:\n\n" +
+        "📱 *Direct Coach WhatsApp:* +254 720 120 227\n" +
+        `👉 *Chat Directly on WhatsApp:*\n${directWaUrl}\n\n` +
+        "Someone will personally attend to you right away. If you ever wish to resume chatting with our AI coach, simply text *RESUME*.";
 
-      await whatsAppClient.sendMessage({ to: cleanPhone, text: handoffMsg });
+      await whatsAppClient.sendMessage({
+        to: cleanPhone,
+        text: handoffMsg,
+        buttons: [
+          { id: 'btn_resume_bot', title: 'Resume AI Coach' },
+          { id: 'btn_explore_services', title: 'View Programmes' }
+        ]
+      });
       store.recordWhatsAppMessage(
         conversation.id,
         'OUTBOUND',
@@ -106,6 +115,10 @@ export class WhatsAppEngine {
       );
       return {
         replyText: handoffMsg,
+        buttons: [
+          { id: 'btn_resume_bot', title: 'Resume AI Coach' },
+          { id: 'btn_explore_services', title: 'View Programmes' }
+        ],
         state: 'HUMAN_HANDOFF',
         humanHandoff: true
       };

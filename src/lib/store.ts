@@ -544,7 +544,7 @@ class Store {
     },
     contact: {
       email: 'hello@becomingher.co.ke',
-      phone: '+254 712 345 678',
+      phone: '+254 720 120 227',
       address: 'Nairobi, Kenya (Serving Women Globally)',
       instagram: '@becomingher.co',
       selar_store_url: 'https://selar.com/m/zipporah-karanja1-Selar'
@@ -787,7 +787,7 @@ class Store {
   public whatsappConfig: WhatsAppConfig = {
     phone_number_id: process.env.WHATSAPP_PHONE_NUMBER_ID || '109847291823901',
     business_account_id: process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || 'waba_991827364',
-    business_number: '+254 700 000 000',
+    business_number: '+254 720 120 227',
     webhook_verify_token: process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || 'becoming_her_verify_token_2026',
     welcome_message: 'Hi 👋 Welcome to Becoming Her.\nI’m your Becoming Her digital coaching assistant. I’m here to help you explore your goals, answer questions, and find the right coaching experience for you.\nWhat would you like help with today?',
     ai_personality: 'Warm, sovereign, empathetic, deeply grounded executive and transformational coach for women.',

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import {
   LayoutDashboard,
   Users,
@@ -24,6 +25,14 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const headerList = await headers();
+  const pathname = headerList.get('x-pathname') || '';
+
+  // If viewing the admin login page, bypass layout shell and auth requirement
+  if (pathname === '/admin/login') {
+    return <>{children}</>;
+  }
+
   // Enforce account login requirement on the server
   const supabase = await createClient();
   const {
@@ -32,8 +41,10 @@ export default async function AdminLayout({
 
   if (!user) {
     redirect(
-      '/login?redirect=/admin&message=' +
-        encodeURIComponent('Please sign in with your account to access the Admin Console.')
+      '/admin/login?redirect=' +
+        encodeURIComponent(pathname || '/admin') +
+        '&message=' +
+        encodeURIComponent('Please sign in with your administrative account to access the console.')
     );
   }
 

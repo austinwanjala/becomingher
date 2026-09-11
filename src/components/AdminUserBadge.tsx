@@ -15,7 +15,7 @@ export function AdminUserBadge({ email, name }: AdminUserBadgeProps) {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    router.push('/login?message=' + encodeURIComponent('You have been signed out of the Admin Console.'));
+    router.push('/admin/login?message=' + encodeURIComponent('You have been securely signed out of the Administrative Console.'));
     router.refresh();
   };
 
