@@ -24,7 +24,9 @@ export async function login(formData: FormData) {
   if (error) {
     console.error('Supabase login error:', error)
     let userMsg = error.message
-    if (error.message.includes('Email not confirmed')) {
+    if (userMsg.includes('fetch failed') || userMsg.includes('ENOTFOUND')) {
+      userMsg = 'Cannot connect to Supabase backend. Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are added to your Vercel Project Settings > Environment Variables, and that you have redeployed.'
+    } else if (error.message.includes('Email not confirmed')) {
       userMsg = 'Please verify your email address, or disable "Confirm email" in your Supabase Auth settings to log in immediately.'
     } else if (error.message.includes('Invalid login credentials')) {
       userMsg = 'Invalid email or password. Please check your credentials or create a new account.'

@@ -23,10 +23,14 @@ export async function adminLogin(formData: FormData) {
     password,
   })
 
-  if (error || !data.user) {
+  if (error || !data?.user) {
     console.error('[ADMIN_LOGIN] Supabase login error:', error?.message)
+    let userMsg = error?.message || 'Invalid administrator credentials. Access denied.'
+    if (userMsg.includes('fetch failed') || userMsg.includes('ENOTFOUND')) {
+      userMsg = 'Cannot connect to Supabase backend. Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are added to your Vercel Project Settings > Environment Variables, and that you have redeployed.'
+    }
     redirect(
-      `/admin/login?message=${encodeURIComponent(error?.message || 'Invalid administrator credentials. Access denied.')}&redirect=${encodeURIComponent(redirectTarget)}`
+      `/admin/login?message=${encodeURIComponent(userMsg)}&redirect=${encodeURIComponent(redirectTarget)}`
     )
   }
 

@@ -2,7 +2,7 @@ import { createBrowserClient } from '@supabase/ssr'
 
 function getValidSupabaseUrl(rawUrl?: string): string {
   if (!rawUrl) return 'https://placeholder.supabase.co';
-  const trimmed = rawUrl.trim();
+  let trimmed = rawUrl.trim().replace(/^["']|["']$/g, '').trim();
   if (trimmed === 'your-supabase-url' || trimmed === 'placeholder' || !trimmed) {
     return 'https://placeholder.supabase.co';
   }

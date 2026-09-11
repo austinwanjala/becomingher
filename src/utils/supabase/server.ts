@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 
 function getValidSupabaseUrl(rawUrl?: string): string {
   if (!rawUrl) return 'https://placeholder.supabase.co';
-  const trimmed = rawUrl.trim();
+  let trimmed = rawUrl.trim().replace(/^["']|["']$/g, '').trim();
   if (trimmed === 'your-supabase-url' || trimmed === 'placeholder' || !trimmed) {
     return 'https://placeholder.supabase.co';
   }
@@ -26,7 +26,7 @@ function getValidSupabaseUrl(rawUrl?: string): string {
 
 function getValidSupabaseKey(rawKey?: string): string {
   if (!rawKey) return 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.placeholder_anon_key';
-  const trimmed = rawKey.trim();
+  const trimmed = rawKey.trim().replace(/^["']|["']$/g, '').trim();
   if (trimmed === 'your-supabase-anon-key' || trimmed.length < 10) {
     return 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.placeholder_anon_key';
   }
