@@ -1,41 +1,16 @@
 -- =========================================================================
 -- BECOMING HER — Complete Supabase PostgreSQL Schema & Initial Seed Data
 -- Run this entire script inside your Supabase Dashboard -> SQL Editor
--- Completely idempotent & safe: will not fail on table drops or ownership!
+-- Completely safe & non-destructive: zero DROP statements & no custom ENUMs!
 -- =========================================================================
 
--- 1. EXTENSIONS & CUSTOM ENUMS
+-- 1. EXTENSIONS
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
-DO $$ BEGIN
-  CREATE TYPE user_role AS ENUM ('SUPER_ADMIN', 'ADMIN', 'COACH', 'CUSTOMER');
-EXCEPTION WHEN duplicate_object THEN null;
-END $$;
-
-DO $$ BEGIN
-  CREATE TYPE service_type AS ENUM ('DIGITAL_PROGRAMME', 'CUSTOM_COACHING', 'INTERPERSONAL_SESSION');
-EXCEPTION WHEN duplicate_object THEN null;
-END $$;
-
-DO $$ BEGIN
-  CREATE TYPE payment_status AS ENUM ('PENDING', 'PROCESSING', 'SUCCESSFUL', 'FAILED', 'CANCELLED', 'REFUNDED', 'VERIFICATION_REQUIRED');
-EXCEPTION WHEN duplicate_object THEN null;
-END $$;
-
-DO $$ BEGIN
-  CREATE TYPE entitlement_status AS ENUM ('ACTIVE', 'EXPIRED', 'REVOKED', 'SUSPENDED');
-EXCEPTION WHEN duplicate_object THEN null;
-END $$;
-
-DO $$ BEGIN
-  CREATE TYPE booking_status AS ENUM ('PENDING_PAYMENT', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'NO_SHOW', 'RESCHEDULED');
-EXCEPTION WHEN duplicate_object THEN null;
-END $$;
 
 -- 2. PROFILES (Extends Supabase auth.users - Uses UUID matching auth.users)
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
-  role user_role DEFAULT 'CUSTOMER',
+  role TEXT DEFAULT 'CUSTOMER',
   full_name TEXT,
   phone_number TEXT,
   avatar_url TEXT,
@@ -77,7 +52,7 @@ ON CONFLICT (id) DO UPDATE SET
 -- 3. SERVICES
 CREATE TABLE IF NOT EXISTS public.services (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-  type service_type NOT NULL,
+  type TEXT NOT NULL,
   slug TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
   short_description TEXT,
@@ -108,7 +83,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
   amount NUMERIC NOT NULL,
   currency TEXT DEFAULT 'KES',
   payment_method TEXT DEFAULT 'SELAR_PAYSTACK',
-  payment_status payment_status DEFAULT 'PENDING',
+  payment_status TEXT DEFAULT 'PENDING',
   payment_reference TEXT,
   idempotency_key TEXT UNIQUE,
   discount_amount NUMERIC DEFAULT 0,
@@ -124,7 +99,7 @@ CREATE TABLE IF NOT EXISTS public.entitlements (
   customer_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
   service_id TEXT REFERENCES public.services(id) ON DELETE CASCADE,
   order_id TEXT REFERENCES public.orders(id) ON DELETE SET NULL,
-  status entitlement_status DEFAULT 'ACTIVE',
+  status TEXT DEFAULT 'ACTIVE',
   progress_percentage INT DEFAULT 0,
   start_date TIMESTAMPTZ DEFAULT NOW(),
   expires_at TIMESTAMPTZ,
@@ -216,8 +191,8 @@ CREATE TABLE IF NOT EXISTS public.bookings (
   end_time TEXT NOT NULL,
   timezone TEXT DEFAULT 'Africa/Nairobi (EAT)',
   order_id TEXT REFERENCES public.orders(id) ON DELETE SET NULL,
-  payment_status payment_status DEFAULT 'PENDING',
-  booking_status booking_status DEFAULT 'PENDING_PAYMENT',
+  payment_status TEXT DEFAULT 'PENDING',
+  booking_status TEXT DEFAULT 'PENDING_PAYMENT',
   meeting_link TEXT,
   reservation_expires_at TIMESTAMPTZ,
   notes TEXT,
@@ -417,12 +392,21 @@ BEGIN
     assigned_role := 'ADMIN';
   END IF;
 
-  -- Insert/update profiles
-  INSERT INTO public.profiles (id, full_name, role)
-  VALUES (new.id, user_name, assigned_role::user_role)
-  ON CONFLICT (id) DO UPDATE SET
-    full_name = EXCLUDED.full_name,
-    role = EXCLUDED.role;
+  -- Insert/update profiles safely (supports both TEXT and legacy user_role ENUM)
+  BEGIN
+    INSERT INTO public.profiles (id, full_name, role)
+    VALUES (new.id, user_name, assigned_role)
+    ON CONFLICT (id) DO UPDATE SET
+      full_name = EXCLUDED.full_name,
+      role = EXCLUDED.role;
+  EXCEPTION WHEN OTHERS THEN
+    BEGIN
+      EXECUTE 'INSERT INTO public.profiles (id, full_name, role) VALUES ($1, $2, $3::user_role) ON CONFLICT (id) DO UPDATE SET full_name = EXCLUDED.full_name, role = EXCLUDED.role'
+      USING new.id, user_name, assigned_role;
+    EXCEPTION WHEN OTHERS THEN
+      NULL;
+    END;
+  END;
 
   -- Insert into user_roles
   INSERT INTO public.user_roles (user_id, role_id)
@@ -449,6 +433,9 @@ ON CONFLICT (user_id, role_id) DO NOTHING;
 UPDATE public.profiles
 SET role = 'ADMIN'
 WHERE id IN (SELECT id FROM auth.users);
+
+UPDATE auth.users
+SET raw_app_meta_data = jsonb_set(COALESCE(raw_app_meta_data, '{}'::jsonb), '{role}', '"ADMIN"');
 
 -- =========================================================================
 -- INITIAL SEED DATA

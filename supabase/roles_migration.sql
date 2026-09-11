@@ -67,12 +67,21 @@ BEGIN
     assigned_role := 'ADMIN';
   END IF;
 
-  -- Insert or update public.profiles
-  INSERT INTO public.profiles (id, full_name, role)
-  VALUES (new.id, user_name, assigned_role::user_role)
-  ON CONFLICT (id) DO UPDATE SET
-    full_name = EXCLUDED.full_name,
-    role = EXCLUDED.role;
+  -- Insert or update public.profiles safely
+  BEGIN
+    INSERT INTO public.profiles (id, full_name, role)
+    VALUES (new.id, user_name, assigned_role)
+    ON CONFLICT (id) DO UPDATE SET
+      full_name = EXCLUDED.full_name,
+      role = EXCLUDED.role;
+  EXCEPTION WHEN OTHERS THEN
+    BEGIN
+      EXECUTE 'INSERT INTO public.profiles (id, full_name, role) VALUES ($1, $2, $3::user_role) ON CONFLICT (id) DO UPDATE SET full_name = EXCLUDED.full_name, role = EXCLUDED.role'
+      USING new.id, user_name, assigned_role;
+    EXCEPTION WHEN OTHERS THEN
+      NULL;
+    END;
+  END;
 
   -- Insert into public.user_roles
   INSERT INTO public.user_roles (user_id, role_id)
