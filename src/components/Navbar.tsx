@@ -13,9 +13,9 @@ export function Navbar() {
   const [user, setUser] = useState<any>(null);
   const pathname = usePathname();
   const router = useRouter();
-  const supabase = createClient();
 
   useEffect(() => {
+    const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
     });
