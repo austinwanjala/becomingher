@@ -1,6 +1,7 @@
 import {
   Service,
   Programme,
+  ProgrammeBook,
   Coach,
   Booking,
   Order,
@@ -117,6 +118,21 @@ class Store {
     overview: 'Welcome to your sacred space of transformation. Over the next four modules, you will explore who you were, realign with who you are, and intentionally author the woman you are becoming.',
     image_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=800',
     is_published: true,
+    book: {
+      id: 'book-guided-01',
+      programme_id: 'prog-guided-01',
+      title: 'Becoming Her: The Sacred Companion Workbook & Reflective Manifesto',
+      author: 'Lead Coach Zipporah Karanja',
+      description: 'The official 142-page guided digital workbook and reflection companion designed exclusively for the Guided Digital Coaching Programme. Packed with structured weekly inquiries, somatic embodiment practices, habit architecture matrices, and transformative journaling frameworks.',
+      cover_image_url: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=800',
+      file_url: '/materials/becoming-her-companion-workbook.pdf',
+      file_name: 'becoming-her-companion-workbook.pdf',
+      file_size: '8.4 MB',
+      page_count: 142,
+      file_type: 'PDF',
+      uploaded_at: '2026-09-01T10:00:00Z',
+      is_published: true
+    },
     modules: [
       {
         id: 'mod-1',
@@ -1067,6 +1083,48 @@ class Store {
 
   public getUserQuestionnaire(userId: string): any {
     return this.questionnaires[userId];
+  }
+
+  public updateProgrammeBook(programmeId: string, bookData: Partial<ProgrammeBook>): ProgrammeBook {
+    if (this.programme.id === programmeId || programmeId === 'prog-guided-01') {
+      const existing = this.programme.book;
+      const updatedBook: ProgrammeBook = {
+        id: existing?.id || `book-${Date.now()}`,
+        programme_id: programmeId,
+        title: bookData.title || existing?.title || 'Programme Companion Workbook',
+        author: bookData.author || existing?.author || 'Lead Coach Zipporah Karanja',
+        description: bookData.description || existing?.description || 'The official companion workbook accompanying this programme.',
+        cover_image_url: bookData.cover_image_url || existing?.cover_image_url || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=800',
+        file_url: bookData.file_url || existing?.file_url || '/materials/becoming-her-companion-workbook.pdf',
+        file_name: bookData.file_name || existing?.file_name || 'programme-workbook.pdf',
+        file_size: bookData.file_size || existing?.file_size || '5.2 MB',
+        page_count: bookData.page_count ?? existing?.page_count ?? 120,
+        file_type: bookData.file_type || existing?.file_type || 'PDF',
+        uploaded_at: new Date().toISOString(),
+        is_published: bookData.is_published ?? existing?.is_published ?? true
+      };
+
+      this.programme.book = updatedBook;
+      this.addAuditLog(
+        'PROGRAMME_BOOK_UPDATED',
+        'PROGRAMMES',
+        `Companion book "${updatedBook.title}" (${updatedBook.file_name}) updated for programme ${this.programme.title}`
+      );
+      return updatedBook;
+    }
+    throw new Error(`Programme ${programmeId} not found`);
+  }
+
+  public removeProgrammeBook(programmeId: string): void {
+    if (this.programme.id === programmeId || programmeId === 'prog-guided-01') {
+      const oldTitle = this.programme.book?.title || 'Book';
+      this.programme.book = null;
+      this.addAuditLog(
+        'PROGRAMME_BOOK_REMOVED',
+        'PROGRAMMES',
+        `Companion book "${oldTitle}" removed from programme ${this.programme.title}`
+      );
+    }
   }
 }
 

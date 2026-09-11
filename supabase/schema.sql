@@ -117,6 +117,7 @@ CREATE TABLE IF NOT EXISTS public.programmes (
   description TEXT,
   overview TEXT,
   image_url TEXT,
+  book JSONB DEFAULT NULL,
   is_published BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );

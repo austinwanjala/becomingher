@@ -36,6 +36,50 @@ export default function GuidedCoachingPage() {
           </div>
         </section>
 
+        {/* Companion Book Showcase Banner */}
+        {programme.book && (
+          <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6">
+            <div className="bg-gradient-to-r from-stone-900 via-rose-950 to-stone-900 text-amber-50 rounded-3xl p-6 sm:p-8 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 border border-amber-200/20">
+              <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
+                <div className="relative w-28 aspect-[3/4] rounded-xl overflow-hidden shadow-2xl border-2 border-amber-200/30 shrink-0">
+                  <img
+                    src={programme.book.cover_image_url || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=800'}
+                    alt={programme.book.title}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-2 left-2 bg-rose-900/90 text-amber-100 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider">
+                    {programme.book.file_type || 'PDF'}
+                  </div>
+                </div>
+                <div className="space-y-1.5 max-w-xl">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-amber-300 bg-amber-400/10 px-2.5 py-0.5 rounded-full border border-amber-300/20">
+                    <BookOpen className="w-3 h-3" /> Included Companion Book
+                  </span>
+                  <h3 className="font-serif text-xl font-semibold text-amber-50">
+                    {programme.book.title}
+                  </h3>
+                  <p className="text-xs text-stone-300 font-medium">
+                    By {programme.book.author || 'Lead Coach Zipporah Karanja'} • {programme.book.page_count} Pages
+                  </p>
+                  <p className="text-xs text-stone-300/90 leading-relaxed">
+                    {programme.book.description}
+                  </p>
+                  <p className="text-[11px] text-amber-200/90 font-medium pt-1">
+                    ✨ Automatically unlocked for online reading and PDF download immediately upon acquiring this programme.
+                  </p>
+                </div>
+              </div>
+
+              <Link
+                href={`/checkout/${service.id}`}
+                className="px-6 py-3 rounded-full bg-amber-100 text-stone-950 text-xs font-semibold hover:bg-white transition shadow shrink-0"
+              >
+                Unlock with Programme
+              </Link>
+            </div>
+          </section>
+        )}
+
         {/* Curriculum Modules */}
         <section className="py-16 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
           <div className="text-center space-y-2">

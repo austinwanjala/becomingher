@@ -140,6 +140,22 @@ export interface ProgrammeModule {
   reflection_questions: ReflectionQuestion[];
 }
 
+export interface ProgrammeBook {
+  id: string;
+  programme_id: string;
+  title: string;
+  author?: string;
+  description?: string;
+  cover_image_url?: string;
+  file_url: string;
+  file_name: string;
+  file_size?: string;
+  page_count?: number;
+  file_type?: string;
+  uploaded_at: string;
+  is_published: boolean;
+}
+
 export interface Programme {
   id: string;
   service_id: string;
@@ -149,6 +165,7 @@ export interface Programme {
   overview: string;
   image_url: string;
   is_published: boolean;
+  book?: ProgrammeBook | null;
   modules: ProgrammeModule[];
 }
 
