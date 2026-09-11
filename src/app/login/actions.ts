@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
+import { getUserRole, isAdminRole } from '@/lib/auth/roles'
 
 export async function login(formData: FormData) {
   const supabase = await createClient()
@@ -15,7 +16,7 @@ export async function login(formData: FormData) {
     redirect(`/login?message=${encodeURIComponent('Please enter your email and password.')}&redirect=${encodeURIComponent(redirectTarget)}`)
   }
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   })
@@ -31,6 +32,15 @@ export async function login(formData: FormData) {
     redirect(`/login?message=${encodeURIComponent(userMsg)}&redirect=${encodeURIComponent(redirectTarget)}`)
   }
 
+  // Safe redirect resolution: ensure customers cannot be redirected to /admin
+  let target = redirectTarget;
+  if (target.startsWith('/admin')) {
+    const role = await getUserRole(data?.user, supabase);
+    if (!isAdminRole(role)) {
+      target = '/dashboard';
+    }
+  }
+
   revalidatePath('/', 'layout')
-  redirect(redirectTarget)
+  redirect(target)
 }

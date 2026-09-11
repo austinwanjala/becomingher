@@ -7,9 +7,10 @@ import { createClient } from '@/utils/supabase/client';
 interface AdminUserBadgeProps {
   email: string;
   name: string;
+  role?: string;
 }
 
-export function AdminUserBadge({ email, name }: AdminUserBadgeProps) {
+export function AdminUserBadge({ email, name, role = 'ADMIN' }: AdminUserBadgeProps) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -19,6 +20,8 @@ export function AdminUserBadge({ email, name }: AdminUserBadgeProps) {
     router.refresh();
   };
 
+  const formattedRole = role.replace('_', ' ');
+
   return (
     <div className="p-3 mx-4 my-3 rounded-2xl bg-stone-50 border border-stone-200/90 shadow-xs flex items-center justify-between gap-2 text-xs">
       <div className="flex items-center gap-2.5 min-w-0">
@@ -26,7 +29,12 @@ export function AdminUserBadge({ email, name }: AdminUserBadgeProps) {
           {name.slice(0, 1).toUpperCase()}
         </div>
         <div className="truncate">
-          <p className="font-semibold text-stone-900 truncate leading-tight">{name}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="font-semibold text-stone-900 truncate leading-tight">{name}</p>
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-800 font-semibold tracking-wide uppercase">
+              {formattedRole}
+            </span>
+          </div>
           <p className="text-[10px] text-stone-500 truncate">{email}</p>
         </div>
       </div>

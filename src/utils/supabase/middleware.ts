@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { getUserRole, isAdminRole } from '@/lib/auth/roles'
 
 export async function updateSession(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
@@ -46,13 +47,17 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // 1. Admin route protection
+  // 1. Role-Based Admin route protection
   if (request.nextUrl.pathname.startsWith('/admin')) {
     if (request.nextUrl.pathname === '/admin/login') {
       if (user) {
-        const url = request.nextUrl.clone();
-        url.pathname = '/admin';
-        return NextResponse.redirect(url);
+        const role = await getUserRole(user, supabase);
+        // Only auto-redirect to /admin if the authenticated user is actually an Administrator
+        if (isAdminRole(role)) {
+          const url = request.nextUrl.clone();
+          url.pathname = '/admin';
+          return NextResponse.redirect(url);
+        }
       }
       return supabaseResponse;
     }
@@ -62,6 +67,18 @@ export async function updateSession(request: NextRequest) {
       url.pathname = '/admin/login';
       url.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search);
       url.searchParams.set('message', 'Please sign in with your administrative account to access the console.');
+      return NextResponse.redirect(url);
+    }
+
+    // Authenticated user attempting to access /admin/*: ensure they are not a Customer
+    const role = await getUserRole(user, supabase);
+    if (!isAdminRole(role)) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/admin/login';
+      url.searchParams.set(
+        'message',
+        'Access Denied: Your account is registered as a Customer. Only users created as Administrators can access the administrative portal.'
+      );
       return NextResponse.redirect(url);
     }
   }

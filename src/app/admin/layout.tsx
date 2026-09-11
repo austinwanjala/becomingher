@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/utils/supabase/server';
 import { AdminUserBadge } from '@/components/AdminUserBadge';
+import { getUserRole, isAdminRole } from '@/lib/auth/roles';
 
 export default async function AdminLayout({
   children,
@@ -45,6 +46,17 @@ export default async function AdminLayout({
         encodeURIComponent(pathname || '/admin') +
         '&message=' +
         encodeURIComponent('Please sign in with your administrative account to access the console.')
+    );
+  }
+
+  // Strict Role-Based Access Control: Deny customers from accessing administrative portal
+  const role = await getUserRole(user, supabase);
+  if (!isAdminRole(role)) {
+    redirect(
+      '/admin/login?message=' +
+        encodeURIComponent(
+          'Access Denied: Your account is registered as a Customer. Only users created as Administrators can access the administrative portal.'
+        )
     );
   }
 
@@ -87,7 +99,7 @@ export default async function AdminLayout({
         </div>
 
         {/* Authenticated Admin Badge with Live User Account Details */}
-        <AdminUserBadge name={adminName} email={adminEmail} />
+        <AdminUserBadge name={adminName} email={adminEmail} role={role} />
 
         <nav className="p-3 space-y-1">
           {navItems.map((item) => (

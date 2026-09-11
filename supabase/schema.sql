@@ -491,3 +491,22 @@ VALUES
 ('ref-2-1', 'mod-2', 'How would you describe the woman you are becoming in five vivid adjectives?', 'e.g., Grounded, Radiant, Unapologetic, Strategic, Peaceful...', 1),
 ('ref-3-1', 'mod-3', 'What is one bold desire you have whispered in secret that you are now ready to declare out loud?', 'Your authentic vision...', 1),
 ('ref-4-1', 'mod-4', 'What promise will you make to yourself today as you complete this sacred chapter?', 'My unwavering commitment to myself...', 1);
+
+-- =========================================================================
+-- ADMINISTRATOR ROLE MANAGEMENT & PROMOTION HELPER
+-- =========================================================================
+-- By default, all newly registered accounts receive role = 'CUSTOMER' and are
+-- strictly barred from accessing the administrative portal (/admin/*).
+--
+-- To promote an authorized user to Administrator:
+-- UPDATE public.profiles
+-- SET role = 'ADMIN'
+-- WHERE id = (SELECT id FROM auth.users WHERE email = 'zipporah@becomingher.co.ke');
+--
+-- To promote to Super Admin:
+-- UPDATE public.profiles
+-- SET role = 'SUPER_ADMIN'
+-- WHERE id = (SELECT id FROM auth.users WHERE email = 'admin@becomingher.co.ke');
+--
+-- Note: Accounts matching DEFAULT_ADMIN_EMAILS or the ADMIN_EMAILS env variable
+-- in src/lib/auth/roles.ts are also automatically granted administrator access.
