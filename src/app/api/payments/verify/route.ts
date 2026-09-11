@@ -76,7 +76,18 @@ export async function POST(request: Request) {
           currency: order.currency,
           serviceId: order.service_id
         });
-      });
+      }).catch(console.error);
+
+      // Dispatch Service PDF & Materials Email to Customer asynchronously
+      import('@/lib/email/delivery').then(({ sendServicePdfEmail }) => {
+        sendServicePdfEmail({
+          customerEmail: order.customer_email,
+          customerName: order.customer_name,
+          serviceId: order.service_id,
+          serviceTitle: order.service_name,
+          orderReference: order.order_reference
+        });
+      }).catch(console.error);
 
       return NextResponse.json({
         verified: true,

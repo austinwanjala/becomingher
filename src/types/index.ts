@@ -48,6 +48,9 @@ export interface Service {
   features: string[];
   selar_product_id?: string;
   selar_product_url?: string;
+  pdf_url?: string;
+  pdf_name?: string;
+  pdf_title?: string;
   created_at: string;
   updated_at?: string;
 }

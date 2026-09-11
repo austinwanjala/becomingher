@@ -12,7 +12,11 @@ import {
   Save,
   X,
   Sparkles,
-  DollarSign
+  DollarSign,
+  Mail,
+  Send,
+  Loader2,
+  FileDown
 } from 'lucide-react';
 import { store } from '@/lib/store';
 import { Service, ServiceType } from '@/types';
@@ -33,8 +37,16 @@ export default function AdminServicesPage() {
   const [description, setDescription] = useState('');
   const [selarProductId, setSelarProductId] = useState('v09683c927');
   const [selarProductUrl, setSelarProductUrl] = useState('https://selar.com/v09683c927');
+  const [pdfTitle, setPdfTitle] = useState('');
+  const [pdfName, setPdfName] = useState('');
+  const [pdfUrl, setPdfUrl] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [isFeatured, setIsFeatured] = useState(false);
+
+  // Quick test email state
+  const [testEmailRecipient, setTestEmailRecipient] = useState('');
+  const [isTestingEmail, setIsTestingEmail] = useState(false);
+  const [testEmailStatus, setTestEmailStatus] = useState<string | null>(null);
 
   const startEdit = (srv: Service) => {
     setEditingService(srv);
@@ -48,6 +60,9 @@ export default function AdminServicesPage() {
     setDescription(srv.description);
     setSelarProductId(srv.selar_product_id || 'v09683c927');
     setSelarProductUrl(srv.selar_product_url || 'https://selar.com/v09683c927');
+    setPdfTitle(srv.pdf_title || (srv.type === 'DIGITAL_PROGRAMME' ? 'Becoming Her Sacred Companion Workbook & Manifesto' : `${srv.name} Materials`));
+    setPdfName(srv.pdf_name || (srv.type === 'DIGITAL_PROGRAMME' ? 'becoming-her-companion-workbook.pdf' : `${srv.slug}-materials.pdf`));
+    setPdfUrl(srv.pdf_url || '/materials/becoming-her-companion-workbook.pdf');
     setIsActive(srv.is_active);
     setIsFeatured(srv.is_featured);
     setIsCreating(false);
@@ -65,6 +80,9 @@ export default function AdminServicesPage() {
     setDescription('Comprehensive digital coaching journey.');
     setSelarProductId('v09683c927');
     setSelarProductUrl('https://selar.com/v09683c927');
+    setPdfTitle('Becoming Her Sacred Companion Workbook');
+    setPdfName('becoming-her-companion-workbook.pdf');
+    setPdfUrl('/materials/becoming-her-companion-workbook.pdf');
     setIsActive(true);
     setIsFeatured(false);
     setIsCreating(true);
@@ -89,6 +107,9 @@ export default function AdminServicesPage() {
             description,
             selar_product_id: selarProductId,
             selar_product_url: selarProductUrl,
+            pdf_title: pdfTitle,
+            pdf_name: pdfName,
+            pdf_url: pdfUrl,
             is_active: isActive,
             is_featured: isFeatured,
             updated_at: new Date().toISOString()
@@ -98,7 +119,7 @@ export default function AdminServicesPage() {
       });
       setServices(updated);
       store.services = updated;
-      store.addAuditLog('SERVICE_UPDATED', 'SERVICES', `Service ${name} updated with Selar ID ${selarProductId}`);
+      store.addAuditLog('SERVICE_UPDATED', 'SERVICES', `Service ${name} updated with PDF fulfillment ${pdfName || 'materials'}`);
       setEditingService(null);
     } else if (isCreating) {
       // Create new
@@ -116,6 +137,9 @@ export default function AdminServicesPage() {
         features: ['Comprehensive Guided Lessons', 'Reflection Inquiries', 'Companion Support'],
         selar_product_id: selarProductId,
         selar_product_url: selarProductUrl,
+        pdf_title: pdfTitle,
+        pdf_name: pdfName,
+        pdf_url: pdfUrl,
         is_active: isActive,
         is_featured: isFeatured,
         created_at: new Date().toISOString()
@@ -133,6 +157,41 @@ export default function AdminServicesPage() {
     store.services = updated;
   };
 
+  const handleSendTestPdfEmail = async (srv: Service) => {
+    const recipient = testEmailRecipient.trim() || prompt('Enter recipient email address for test PDF dispatch:', 'austinwanjala@gmail.com');
+    if (!recipient) return;
+
+    setIsTestingEmail(true);
+    setTestEmailStatus(null);
+
+    try {
+      const res = await fetch('/api/admin/send-service-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerEmail: recipient,
+          customerName: 'Valued Client',
+          serviceId: srv.id,
+          serviceTitle: srv.name,
+          pdfUrl: srv.pdf_url,
+          pdfName: srv.pdf_name,
+          pdfTitle: srv.pdf_title
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setTestEmailStatus(`✓ Sent: ${data.message}`);
+      } else {
+        setTestEmailStatus(`✗ Error: ${data.error || 'Dispatch failed'}`);
+      }
+    } catch (err: any) {
+      setTestEmailStatus(`✗ Error: ${err.message}`);
+    } finally {
+      setIsTestingEmail(false);
+      setTimeout(() => setTestEmailStatus(null), 8000);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -141,7 +200,7 @@ export default function AdminServicesPage() {
             Services & Selar Product Mappings
           </h1>
           <p className="text-xs sm:text-sm text-stone-600">
-            Configure coaching offerings, pricing in KES, and associate each service with its corresponding Selar product.
+            Configure coaching offerings, pricing in KES, attached PDF fulfillment materials, and associate each service with its Selar product.
           </p>
         </div>
 
@@ -152,6 +211,62 @@ export default function AdminServicesPage() {
           <Plus className="w-3.5 h-3.5" />
           <span>Add New Service</span>
         </button>
+      </div>
+
+      {/* Automated PDF Email Delivery Info Card */}
+      <div className="p-6 bg-gradient-to-r from-stone-900 via-rose-950 to-stone-900 text-amber-50 rounded-3xl border border-amber-200/20 shadow-md space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-400/20 border border-amber-300/30 flex items-center justify-center text-amber-300">
+              <Mail className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-serif text-base font-semibold text-white">
+                Automated Customer PDF Materials Delivery
+              </h3>
+              <p className="text-xs text-stone-300">
+                When an order is verified or paid via Selar, Becoming Her automatically sends the service PDF & workbook directly to the customer's email.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-stone-300">
+          <div className="bg-white/5 p-3.5 rounded-xl border border-white/10 space-y-1">
+            <span className="font-semibold text-amber-200 block">Required Environment Variables:</span>
+            <div className="font-mono text-[11px] text-amber-100/90 space-y-0.5">
+              <div>RESEND_API_KEY=re_your_api_key</div>
+              <div>EMAIL_FROM=Becoming Her &lt;onboarding@resend.dev&gt;</div>
+            </div>
+          </div>
+
+          <div className="bg-white/5 p-3.5 rounded-xl border border-white/10 space-y-2">
+            <span className="font-semibold text-amber-200 block">Quick Email Test Dispatcher:</span>
+            <div className="flex gap-2">
+              <input
+                type="email"
+                placeholder="your.email@example.com"
+                value={testEmailRecipient}
+                onChange={(e) => setTestEmailRecipient(e.target.value)}
+                className="flex-1 px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 text-white placeholder:text-stone-400 text-xs focus:outline-none focus:ring-1 focus:ring-amber-300"
+              />
+              <button
+                type="button"
+                onClick={() => services[0] && handleSendTestPdfEmail(services[0])}
+                disabled={isTestingEmail}
+                className="px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-white text-stone-900 font-semibold text-xs transition flex items-center gap-1 shrink-0 disabled:opacity-50"
+              >
+                {isTestingEmail ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                <span>Test Send</span>
+              </button>
+            </div>
+            {testEmailStatus && (
+              <p className="text-[11px] text-amber-300 font-medium">
+                {testEmailStatus}
+              </p>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Services Table */}
@@ -339,6 +454,51 @@ export default function AdminServicesPage() {
                         onChange={(e) => setSelarProductUrl(e.target.value)}
                         className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono text-xs bg-white"
                         placeholder="https://selar.com/v09683c927"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Service PDF Materials & Email Fulfillment Section */}
+                <div className="sm:col-span-2 p-4 bg-amber-50/70 rounded-2xl border border-amber-200/90 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <FileDown className="w-4 h-4 text-amber-800" />
+                    <h4 className="font-serif font-semibold text-stone-900 text-sm">
+                      Customer PDF Fulfillment (Sent to Customer Email on Purchase)
+                    </h4>
+                  </div>
+                  <p className="text-xs text-stone-600">
+                    Specify the workbook, guidebook, or companion PDF file that should be automatically delivered to the customer's email upon payment.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="font-medium text-stone-700 text-xs">PDF Material Title</label>
+                      <input
+                        type="text"
+                        value={pdfTitle}
+                        onChange={(e) => setPdfTitle(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs bg-white"
+                        placeholder="e.g. Becoming Her Companion Workbook"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-medium text-stone-700 text-xs">PDF Filename</label>
+                      <input
+                        type="text"
+                        value={pdfName}
+                        onChange={(e) => setPdfName(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono text-xs bg-white"
+                        placeholder="becoming-her-companion-workbook.pdf"
+                      />
+                    </div>
+                    <div className="space-y-1 sm:col-span-2">
+                      <label className="font-medium text-stone-700 text-xs">PDF Download URL or Relative Path</label>
+                      <input
+                        type="text"
+                        value={pdfUrl}
+                        onChange={(e) => setPdfUrl(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono text-xs bg-white"
+                        placeholder="/materials/becoming-her-companion-workbook.pdf or https://..."
                       />
                     </div>
                   </div>
