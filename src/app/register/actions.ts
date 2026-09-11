@@ -11,7 +11,8 @@ export async function signup(formData: FormData) {
   const password = formData.get('password') as string
   const name = (formData.get('name') as string)?.trim()
   const phone = (formData.get('phone') as string)?.trim()
-  const redirectTarget = (formData.get('redirect') as string) || '/dashboard'
+  const rawTarget = (formData.get('redirect') as string) || '/dashboard'
+  const redirectTarget = rawTarget.startsWith('/admin') ? '/dashboard' : rawTarget
 
   if (!email || !password) {
     redirect(`/register?message=${encodeURIComponent('Please provide both email and password.')}&redirect=${encodeURIComponent(redirectTarget)}`)

@@ -25,6 +25,9 @@ export default async function RegisterPage({
 
   // Determine redirect target: prioritize service checkout if provided
   let redirectTarget = params.redirect || '/dashboard';
+  if (redirectTarget.startsWith('/admin')) {
+    redirectTarget = '/dashboard';
+  }
   if (service) {
     redirectTarget = `/checkout/${service}`;
   }

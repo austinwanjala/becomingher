@@ -32,13 +32,11 @@ export async function login(formData: FormData) {
     redirect(`/login?message=${encodeURIComponent(userMsg)}&redirect=${encodeURIComponent(redirectTarget)}`)
   }
 
-  // Safe redirect resolution: ensure customers cannot be redirected to /admin
+  // Safe redirect resolution: customer logins must never be redirected to /admin
   let target = redirectTarget;
-  if (target.startsWith('/admin')) {
+  if (!target || target.startsWith('/admin')) {
     const role = await getUserRole(data?.user, supabase);
-    if (!isAdminRole(role)) {
-      target = '/dashboard';
-    }
+    target = isAdminRole(role) ? '/admin' : '/dashboard';
   }
 
   revalidatePath('/', 'layout')

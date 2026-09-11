@@ -13,7 +13,9 @@ export default async function LoginPage({
 }) {
   const params = await searchParams;
   const message = params.message;
-  const redirectTarget = params.redirect || '/dashboard';
+  // Strictly isolate customer portal: /login must never redirect into /admin
+  const rawRedirect = params.redirect || '/dashboard';
+  const redirectTarget = rawRedirect.startsWith('/admin') ? '/dashboard' : rawRedirect;
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#FAF8F5] p-4 text-stone-900 relative">
@@ -114,6 +116,16 @@ export default async function LoginPage({
                 className="font-semibold text-rose-900 hover:text-stone-950 transition underline"
               >
                 Create an Account
+              </Link>
+            </div>
+
+            <div className="pt-2 text-center text-[11px] text-stone-500">
+              <span>Are you an executive staff member? </span>
+              <Link
+                href="/admin/login"
+                className="text-stone-700 hover:text-rose-950 font-medium underline transition"
+              >
+                Admin Console Sign In →
               </Link>
             </div>
           </CardContent>
