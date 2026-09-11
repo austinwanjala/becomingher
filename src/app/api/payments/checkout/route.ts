@@ -12,8 +12,17 @@ export async function POST(request: Request) {
       customerEmail,
       customerPhone,
       couponCode,
+      disclaimerAccepted,
       bookingDetails // optional: { scheduledDate, startTime, endTime, timezone, notes }
     } = body;
+
+    // Enforce disclaimer acceptance before proceeding to payment
+    if (!disclaimerAccepted) {
+      return NextResponse.json(
+        { error: 'You must acknowledge and accept the coaching disclaimer before proceeding to payment.' },
+        { status: 400 }
+      );
+    }
 
     // Verify authenticated user session
     const supabase = await createClient();
@@ -111,7 +120,10 @@ export async function POST(request: Request) {
       coupon_code: couponCode,
       metadata: {
         bookingId: pendingBookingId,
-        serviceType: service.type
+        serviceType: service.type,
+        disclaimer_accepted: true,
+        disclaimer_version: '1.0',
+        disclaimer_accepted_at: new Date().toISOString()
       },
       created_at: new Date().toISOString()
     };
@@ -138,6 +150,19 @@ export async function POST(request: Request) {
 
     pendingOrder.transaction_reference = checkout.transactionReference;
     store.orders.unshift(pendingOrder);
+
+    // Record compliance acceptance for this order
+    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'unknown';
+    const clientUa = request.headers.get('user-agent') || 'unknown';
+    store.recordDisclaimerAcceptance({
+      userId: effectiveCustomerId,
+      userEmail: effectiveCustomerEmail,
+      orderId: orderId,
+      disclaimerVersion: '1.0',
+      context: 'CHECKOUT',
+      ipAddress: clientIp,
+      userAgent: clientUa
+    });
 
     store.addAuditLog(
       'CHECKOUT_INITIATED',

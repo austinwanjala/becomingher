@@ -3,6 +3,7 @@ import { Sparkles, CheckCircle2, ArrowRight, Brain, ClipboardList, ShieldCheck, 
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { store } from '@/lib/store';
+import { ServiceDisclaimer } from '@/components/DisclaimerModal';
 
 export default function CustomCoachingPage() {
   const service = store.getServiceBySlug('custom-coaching') || store.services[1];
@@ -41,6 +42,10 @@ export default function CustomCoachingPage() {
               >
                 Start Customized Coaching ({service.currency} {service.price.toLocaleString()})
               </Link>
+            </div>
+
+            <div className="pt-4 max-w-xl mx-auto">
+              <ServiceDisclaimer serviceType="custom" />
             </div>
           </div>
         </section>

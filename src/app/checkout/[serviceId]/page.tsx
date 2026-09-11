@@ -21,6 +21,7 @@ import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { store } from '@/lib/store';
 import { createClient } from '@/utils/supabase/client';
+import { DisclaimerModal } from '@/components/DisclaimerModal';
 
 export default function CheckoutPage({ params }: { params: Promise<{ serviceId: string }> }) {
   const router = useRouter();
@@ -38,6 +39,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ serviceId: 
   const [couponCode, setCouponCode] = useState('');
   const [discountAmount, setDiscountAmount] = useState(0);
   const [couponMessage, setCouponMessage] = useState('');
+  const [isDisclaimerAccepted, setIsDisclaimerAccepted] = useState(false);
 
   // Interpersonal booking states
   const [selectedDate, setSelectedDate] = useState('2026-09-22');
@@ -119,6 +121,12 @@ export default function CheckoutPage({ params }: { params: Promise<{ serviceId: 
       return;
     }
 
+    // Strictly enforce disclaimer acceptance before payment
+    if (!isDisclaimerAccepted) {
+      setErrorMessage('Please acknowledge the coaching disclaimer below before proceeding to payment.');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -128,7 +136,8 @@ export default function CheckoutPage({ params }: { params: Promise<{ serviceId: 
         customerName: customerName.trim() || currentUser.email,
         customerEmail: customerEmail.trim() || currentUser.email,
         customerPhone,
-        couponCode: discountAmount > 0 ? couponCode : undefined
+        couponCode: discountAmount > 0 ? couponCode : undefined,
+        disclaimerAccepted: isDisclaimerAccepted
       };
 
       if (service.type === 'INTERPERSONAL_SESSION') {
@@ -405,23 +414,63 @@ export default function CheckoutPage({ params }: { params: Promise<{ serviceId: 
                   </span>
                 </div>
 
+                {/* Compact Legal Disclaimer Card */}
+                {currentUser && (
+                  <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200/90 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-stone-900">
+                        <ShieldCheck className="w-4 h-4 text-amber-800 shrink-0" />
+                        <span>Important</span>
+                      </div>
+                      <DisclaimerModal triggerText="Read full disclaimer" />
+                    </div>
+
+                    <p className="text-[11px] sm:text-xs text-stone-600 leading-relaxed">
+                      Becoming Her is a coaching and personal-development programme. It is not therapy or counselling and does not replace professional medical or mental-health care.
+                    </p>
+
+                    <label
+                      htmlFor="checkout-disclaimer-checkbox"
+                      className="flex items-start gap-2.5 pt-1 cursor-pointer select-none group"
+                    >
+                      <input
+                        id="checkout-disclaimer-checkbox"
+                        type="checkbox"
+                        checked={isDisclaimerAccepted}
+                        onChange={(e) => setIsDisclaimerAccepted(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 rounded border-stone-300 text-stone-900 accent-stone-900 focus:ring-rose-900 cursor-pointer shrink-0"
+                      />
+                      <span className="text-[11px] sm:text-xs text-stone-800 group-hover:text-stone-950 font-medium leading-snug">
+                        I understand the nature of this programme.
+                      </span>
+                    </label>
+                  </div>
+                )}
+
                 {/* Primary Action Button */}
                 <div className="pt-2 flex flex-col gap-3">
                   {currentUser ? (
-                    <button
-                      type="submit"
-                      disabled={isLoading}
-                      className="w-full py-4 rounded-xl bg-stone-900 text-amber-50 font-medium text-sm hover:bg-rose-950 transition flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
-                    >
-                      {isLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <>
-                          <span>Proceed to Selar Payment ({service.currency} {finalPrice.toLocaleString()})</span>
-                          <ArrowRight className="w-4 h-4" />
-                        </>
+                    <>
+                      <button
+                        type="submit"
+                        disabled={isLoading || !isDisclaimerAccepted}
+                        className="w-full py-4 rounded-xl bg-stone-900 text-amber-50 font-medium text-sm hover:bg-rose-950 transition flex items-center justify-center gap-2 shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {isLoading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <>
+                            <span>Proceed to Selar Payment ({service.currency} {finalPrice.toLocaleString()})</span>
+                            <ArrowRight className="w-4 h-4" />
+                          </>
+                        )}
+                      </button>
+                      {!isDisclaimerAccepted && (
+                        <p className="text-[10px] text-center text-stone-500 italic">
+                          Please check the box above acknowledging the coaching disclaimer to proceed.
+                        </p>
                       )}
-                    </button>
+                    </>
                   ) : (
                     <Link
                       href={`/register?redirect=${encodeURIComponent(`/checkout/${service.id}`)}`}

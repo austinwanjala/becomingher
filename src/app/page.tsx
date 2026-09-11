@@ -15,6 +15,7 @@ import {
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { store } from '@/lib/store';
+import { HiddenCostCalculator } from '@/components/HiddenCostCalculator';
 
 export default function HomePage() {
   const cms = store.cms;
@@ -195,6 +196,13 @@ export default function HomePage() {
                 </div>
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* 2.5 CALCULATE YOUR HIDDEN COST */}
+        <section className="py-20 bg-gradient-to-b from-white to-[#F7F3EE] border-b border-stone-200/60">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <HiddenCostCalculator />
           </div>
         </section>
 

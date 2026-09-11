@@ -28,10 +28,23 @@ import {
   WhatsAppMessageType
 } from '@/types';
 
+export interface DisclaimerAcceptanceRecord {
+  id: string;
+  user_id: string;
+  user_email?: string;
+  order_id?: string;
+  disclaimer_version: string;
+  context: 'REGISTRATION' | 'CHECKOUT';
+  accepted_at: string;
+  ip_address?: string;
+  user_agent?: string;
+}
+
 // Global mock/fallback state with seed data
 class Store {
   private static instance: Store;
 
+  public disclaimerAcceptances: DisclaimerAcceptanceRecord[] = [];
   public services: Service[] = [
     {
       id: 'srv-guided-01',
@@ -1169,6 +1182,35 @@ class Store {
       this.cms.brand.logo_dark_url = '';
     }
     this.addAuditLog('BRAND_LOGO_REMOVED', 'BRANDING', 'Website logo reset to default monogram');
+  }
+
+  public recordDisclaimerAcceptance(data: {
+    userId: string;
+    userEmail?: string;
+    orderId?: string;
+    disclaimerVersion: string;
+    context: 'REGISTRATION' | 'CHECKOUT';
+    ipAddress?: string;
+    userAgent?: string;
+  }): DisclaimerAcceptanceRecord {
+    const record: DisclaimerAcceptanceRecord = {
+      id: `disc-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      user_id: data.userId,
+      user_email: data.userEmail,
+      order_id: data.orderId,
+      disclaimer_version: data.disclaimerVersion,
+      context: data.context,
+      accepted_at: new Date().toISOString(),
+      ip_address: data.ipAddress,
+      user_agent: data.userAgent
+    };
+    this.disclaimerAcceptances.unshift(record);
+    this.addAuditLog(
+      'DISCLAIMER_ACCEPTED',
+      'LEGAL_COMPLIANCE',
+      `User ${data.userId} accepted disclaimer v${data.disclaimerVersion} (${data.context})`
+    );
+    return record;
   }
 }
 

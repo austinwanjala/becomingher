@@ -3,6 +3,7 @@ import { Sparkles, CheckCircle2, ArrowRight, BookOpen, Clock, ShieldCheck, FileT
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { store } from '@/lib/store';
+import { ServiceDisclaimer } from '@/components/DisclaimerModal';
 
 export default function GuidedCoachingPage() {
   const service = store.getServiceBySlug('guided-coaching') || store.services[0];
@@ -32,6 +33,10 @@ export default function GuidedCoachingPage() {
               >
                 Enroll for {service.currency} {service.price.toLocaleString()}
               </Link>
+            </div>
+
+            <div className="pt-4 max-w-xl mx-auto">
+              <ServiceDisclaimer serviceType="guided" />
             </div>
           </div>
         </section>

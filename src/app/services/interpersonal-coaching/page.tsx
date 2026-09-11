@@ -12,6 +12,7 @@ import {
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { store } from '@/lib/store';
+import { ServiceDisclaimer } from '@/components/DisclaimerModal';
 
 export default function InterpersonalCoachingPage() {
   const service = store.getServiceBySlug('interpersonal-coaching') || store.services[2];
@@ -42,6 +43,10 @@ export default function InterpersonalCoachingPage() {
                 <CalendarIcon className="w-4 h-4" />
                 <span>Schedule a Session ({service.currency} {service.price.toLocaleString()})</span>
               </Link>
+            </div>
+
+            <div className="pt-4 max-w-xl mx-auto">
+              <ServiceDisclaimer serviceType="interpersonal" />
             </div>
           </div>
         </section>

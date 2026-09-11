@@ -1,10 +1,7 @@
-import { signup } from './actions'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { Sparkles, AlertCircle, ArrowLeft, ShieldCheck } from 'lucide-react'
+import { Sparkles, AlertCircle, ArrowLeft } from 'lucide-react'
+import { RegisterForm } from '@/components/RegisterForm'
 
 export default async function RegisterPage({
   searchParams,
@@ -94,80 +91,12 @@ export default async function RegisterPage({
               </div>
             )}
 
-            <form action={signup} className="space-y-4">
-              <input type="hidden" name="redirect" value={redirectTarget} />
-              <input type="hidden" name="source" value={source || ''} />
-              <input type="hidden" name="service" value={service || ''} />
-
-              <div className="space-y-1.5">
-                <Label htmlFor="name" className="text-xs font-semibold text-stone-700">
-                  Full Name
-                </Label>
-                <Input
-                  id="name"
-                  name="name"
-                  placeholder="e.g. Grace Mwangi"
-                  className="rounded-xl border-stone-200 focus-visible:ring-rose-900 text-sm"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="phone" className="text-xs font-semibold text-stone-700">
-                  Phone Number (WhatsApp)
-                </Label>
-                <Input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  defaultValue={phone || ''}
-                  placeholder="+254 712 345 678"
-                  className="rounded-xl border-stone-200 focus-visible:ring-rose-900 text-sm"
-                />
-                <span className="text-[10px] text-stone-500 block">
-                  Used to receive coaching reminders, meeting links, and WhatsApp coaching companion updates.
-                </span>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-xs font-semibold text-stone-700">
-                  Email Address
-                </Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="grace.mwangi@gmail.com"
-                  className="rounded-xl border-stone-200 focus-visible:ring-rose-900 text-sm"
-                  required
-                />
-                <span className="text-[10px] text-stone-500 block">
-                  Use your active personal email where you receive purchase confirmations.
-                </span>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="password" className="text-xs font-semibold text-stone-700">
-                  Create Password
-                </Label>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  placeholder="At least 6 characters"
-                  minLength={6}
-                  className="rounded-xl border-stone-200 focus-visible:ring-rose-900 text-sm"
-                  required
-                />
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full py-3 rounded-xl bg-rose-950 hover:bg-stone-900 text-amber-50 text-xs font-semibold transition shadow"
-              >
-                Create Account & Continue
-              </Button>
-            </form>
+            <RegisterForm
+              redirectTarget={redirectTarget}
+              source={source}
+              service={service}
+              phone={phone}
+            />
 
             <div className="pt-4 border-t border-stone-100 text-center text-xs text-stone-600">
               Already have an account?{' '}
