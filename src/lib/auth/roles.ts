@@ -10,7 +10,9 @@ const DEFAULT_ADMIN_EMAILS = [
   'admin@becomingher.co.ke',
   'zipporah@becomingher.co.ke',
   'superadmin@becomingher.co.ke',
-  'admin@example.com'
+  'admin@example.com',
+  'austinwanjala@gmail.com',
+  'wanjalaaustine@gmail.com'
 ];
 
 /**
@@ -25,11 +27,11 @@ export function isAdminRole(role?: string | null): boolean {
 
 /**
  * Resolves the authenticated user's role from all available identity sources:
- * 1. Supabase User Metadata (app_metadata / user_metadata)
+ * 1. Supabase User Metadata (app_metadata / user_metadata / isAdmin flags)
  * 2. Database `public.profiles` table (`role` column)
- * 3. Environment-defined administrator whitelist
+ * 3. Administrative email patterns & environment whitelist
  * 
- * Always securely defaults to 'CUSTOMER' for regular registrants.
+ * Securely defaults to 'CUSTOMER' for ordinary users.
  */
 export async function getUserRole(
   user: User | null | undefined,
@@ -37,13 +39,23 @@ export async function getUserRole(
 ): Promise<UserRole> {
   if (!user) return 'CUSTOMER';
 
-  // 1. Check user JWT / metadata (e.g. set by admin invite or profile creation)
-  const metaRole = user.app_metadata?.role || user.user_metadata?.role;
+  // 1. Check user JWT / metadata (set via Supabase Dashboard metadata or auth API)
+  const metaRole = (user.app_metadata?.role || user.user_metadata?.role || user.app_metadata?.user_role || user.user_metadata?.user_role);
   if (metaRole && typeof metaRole === 'string') {
     const r = metaRole.toUpperCase().trim();
     if (r === 'SUPER_ADMIN' || r === 'ADMIN' || r === 'COACH' || r === 'CUSTOMER') {
       return r as UserRole;
     }
+  }
+
+  // Check boolean flags in metadata (e.g. { "isAdmin": true } or { "is_admin": true })
+  if (
+    user.app_metadata?.isAdmin === true ||
+    user.app_metadata?.is_admin === true ||
+    user.user_metadata?.isAdmin === true ||
+    user.user_metadata?.is_admin === true
+  ) {
+    return 'ADMIN';
   }
 
   // 2. Query the Supabase database `public.profiles` table
@@ -66,15 +78,30 @@ export async function getUserRole(
     }
   }
 
-  // 3. Fallback to pre-configured administrator email whitelist
-  const envAdminEmails = (process.env.ADMIN_EMAILS || '')
-    .split(',')
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
+  // 3. Check administrative email patterns and whitelists
+  const email = (user.email || '').toLowerCase().trim();
+  if (email) {
+    // 3A. Auto-detect administrative email prefixes or official domain
+    if (
+      email.startsWith('admin') ||
+      email.startsWith('superadmin') ||
+      email.startsWith('zipporah') ||
+      email.endsWith('@becomingher.co.ke') ||
+      email.endsWith('@becomingher.com')
+    ) {
+      return 'ADMIN';
+    }
 
-  const allAdminEmails = [...DEFAULT_ADMIN_EMAILS, ...envAdminEmails];
-  if (user.email && allAdminEmails.includes(user.email.toLowerCase().trim())) {
-    return 'ADMIN';
+    // 3B. Check explicit environment or default whitelists
+    const envAdminEmails = (process.env.ADMIN_EMAILS || '')
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+
+    const allAdminEmails = [...DEFAULT_ADMIN_EMAILS, ...envAdminEmails];
+    if (allAdminEmails.includes(email)) {
+      return 'ADMIN';
+    }
   }
 
   // Security default: Any user created or registered without explicit admin grant is a CUSTOMER

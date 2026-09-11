@@ -40,8 +40,25 @@ export async function adminLogin(formData: FormData) {
     await supabase.auth.signOut()
 
     redirect(
-      `/admin/login?message=${encodeURIComponent('Access Denied: Your account is registered as a Customer. Only users created as Administrators can access the administrative portal.')}&redirect=${encodeURIComponent(redirectTarget)}`
+      `/admin/login?message=${encodeURIComponent(
+        `Access Denied: Account '${email}' is currently registered as a Customer. To grant administrator rights, set role to 'ADMIN' in Supabase, or add this email to ADMIN_EMAILS in .env.local.`
+      )}&redirect=${encodeURIComponent(redirectTarget)}`
     )
+  }
+
+  // Ensure admin profile exists in database
+  try {
+    const adminName = data.user.user_metadata?.name || email.split('@')[0];
+    await supabase.from('profiles').upsert(
+      {
+        id: data.user.id,
+        full_name: adminName,
+        role: role,
+      },
+      { onConflict: 'id' }
+    );
+  } catch {
+    // Ignore profile upsert errors
   }
 
   revalidatePath('/admin', 'layout')
