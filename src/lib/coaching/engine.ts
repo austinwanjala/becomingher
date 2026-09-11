@@ -203,18 +203,36 @@ RULES:
     // 2. Google Gemini Integration (if GEMINI_API_KEY is provided)
     if (geminiKey) {
       const cleanGeminiKey = geminiKey.trim();
-      const modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+      const modelsToTry = ['gemini-1.5-flash', 'gemini-2.0-flash'];
+
+      // Sanitize turns so Gemini never receives leading 'model' role or consecutive same-roles
+      const geminiTurns: Array<{ role: 'user' | 'model'; parts: { text: string }[] }> = [];
+
+      for (const h of history.slice(-8)) {
+        if (!h.content || !h.content.trim()) continue;
+        const role: 'user' | 'model' = h.role === 'assistant' ? 'model' : 'user';
+
+        // Gemini strictly requires the first turn to be 'user'
+        if (geminiTurns.length === 0 && role === 'model') {
+          continue;
+        }
+
+        if (geminiTurns.length > 0 && geminiTurns[geminiTurns.length - 1].role === role) {
+          geminiTurns[geminiTurns.length - 1].parts[0].text += `\n\n${h.content.trim()}`;
+        } else {
+          geminiTurns.push({ role, parts: [{ text: h.content.trim() }] });
+        }
+      }
+
+      // Add current user message
+      if (geminiTurns.length > 0 && geminiTurns[geminiTurns.length - 1].role === 'user') {
+        geminiTurns[geminiTurns.length - 1].parts[0].text += `\n\n${message.trim()}`;
+      } else {
+        geminiTurns.push({ role: 'user', parts: [{ text: message.trim() }] });
+      }
 
       for (const modelName of modelsToTry) {
         try {
-          const contents = [
-            ...history.slice(-6).map((h) => ({
-              role: h.role === 'assistant' ? 'model' : 'user',
-              parts: [{ text: h.content }]
-            })),
-            { role: 'user', parts: [{ text: message }] }
-          ];
-
           const res = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${cleanGeminiKey}`,
             {
@@ -224,8 +242,8 @@ RULES:
                 systemInstruction: {
                   parts: [{ text: systemPrompt }]
                 },
-                contents,
-                generationConfig: { maxOutputTokens: 700, temperature: 0.7 }
+                contents: geminiTurns,
+                generationConfig: { maxOutputTokens: 800, temperature: 0.7 }
               })
             }
           );
@@ -236,7 +254,31 @@ RULES:
             if (candidate && typeof candidate === 'string') return candidate.trim();
           } else {
             const errText = await res.text().catch(() => '');
-            console.warn(`Gemini (${modelName}) non-OK:`, res.status, errText);
+            console.warn(`Gemini (${modelName}) HTTP ${res.status}:`, errText);
+
+            // Fallback: Try without separate systemInstruction (embed prompt in first turn)
+            const fallbackTurns = [
+              { role: 'user' as const, parts: [{ text: `${systemPrompt}\n\nUser Question:\n${geminiTurns[0].parts[0].text}` }] },
+              ...geminiTurns.slice(1)
+            ];
+
+            const fallbackRes = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${cleanGeminiKey}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: fallbackTurns,
+                  generationConfig: { maxOutputTokens: 800, temperature: 0.7 }
+                })
+              }
+            );
+
+            if (fallbackRes.ok) {
+              const fbData = await fallbackRes.json();
+              const fbCandidate = fbData.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (fbCandidate && typeof fbCandidate === 'string') return fbCandidate.trim();
+            }
           }
         } catch (err) {
           console.warn(`Gemini (${modelName}) invocation error:`, err);
@@ -466,8 +508,6 @@ Every small, consistent action step builds unwavering self-trust. Which of these
       lower.includes('imposter') ||
       lower.includes('fraud') ||
       lower.includes('not good enough') ||
-      lower.includes('fear of failure') ||
-      lower.includes('self-doubt') ||
       lower.includes('shrink')
     ) {
       return `Beloved ${name}, feeling like an "imposter" or questioning your worth is rarely proof of inadequacy. It is almost always evidence that you are stepping across the threshold of a new, expanded version of yourself.
@@ -479,6 +519,63 @@ When self-doubt speaks up, try this shift:
 2. **Anchor in evidence, not emotion**: Recall three tangible breakthroughs you created in your life that nobody handed to you.
 
 What is one room, meeting, or conversation this week where you feel called to speak with full, unapologetic conviction?${memory}`;
+    }
+
+    // Anxiety / Panic / Worry / Overactive Mind
+    if (
+      lower.includes('anxiety') ||
+      lower.includes('anxious') ||
+      lower.includes('panic') ||
+      lower.includes('nervous') ||
+      lower.includes('worry') ||
+      lower.includes('spiraling')
+    ) {
+      return `Breathe gently with me right now, ${name}. Place both feet flat on the ground and feel the solid earth supporting you.
+
+Anxiety is often your nervous system living 10 steps into an unwritten future, trying to solve problems that haven't arrived yet. It is not a character defect—it is an overactive protective response.
+
+Let us bring your spirit back into this present room:
+1. **Somatic Reset**: Inhale deeply for 4 counts, hold for 4, and release through your mouth for 6 slow counts. Feel your shoulders drop.
+2. **Untangle Fact from Fiction**: Ask yourself, *"In this exact moment, sitting right here, am I safe?"* The answer is almost always yes. You only have to breathe through this current minute.
+
+What is the specific fear that anxiety is trying to convince you of today? Let's name it together so it loses its grip.${memory}`;
+    }
+
+    // Fear / Afraid / Scared / Terrified
+    if (
+      lower.includes('fear') ||
+      lower.includes('afraid') ||
+      lower.includes('scared') ||
+      lower.includes('terrified')
+    ) {
+      return `Beloved ${name}, look gently at that fear without judgment. 
+
+In the Becoming Her journey, we distinguish between two kinds of fear:
+• **Biological Danger**: The fear that keeps you from touching fire.
+• **Expansion Fear**: The trembling sensation that arises right when you are about to outgrow an old identity.
+
+Your fear is simply proof that you care deeply about your future and that you are standing at the threshold of a higher version of yourself. You do not have to wait for fear to vanish before you take sovereign action—courage is taking one calm step with trembling hands.
+
+What is on the other side of this fear if you choose to trust yourself just 5% more today?${memory}`;
+    }
+
+    // Sadness / Grief / Crying / Heartache
+    if (
+      lower.includes('sad') ||
+      lower.includes('crying') ||
+      lower.includes('grief') ||
+      lower.includes('hurting') ||
+      lower.includes('heavy heart')
+    ) {
+      return `I receive you with so much tenderness, ${name}. 🌸
+
+You do not have to put on a strong face here or rush to "fix" how you feel. Your tears and sadness are sacred water—they are the way your heart cleanses the seasons and expectations you have outgrown.
+
+Give yourself full permission to be soft today:
+• Wrap yourself in warmth, sip some water, and let the emotion move through you without asking yourself to be productive.
+• Remember: You are not broken because you feel heavy. You are human, and you have carried a great deal with very little rest.
+
+What is one gentle kindness you can offer your body and spirit this afternoon?${memory}`;
     }
 
     // Boundaries / Saying No / People Pleasing / Family Guilt
@@ -679,23 +776,44 @@ Remember to drink some water, breathe deeply, and honor your peace today. I am a
     // =========================================================================
     // 4. INTELLIGENT GENERAL INQUIRY ANALYZER (Mirrors User's Question directly)
     // =========================================================================
-    // Extract key nouns/themes from user message to ensure direct, customized dialogue
     const topicSummary = cleanMessage
       .replace(/^(can you|how do i|what should i|why do i|i feel like|is it possible to|tell me about)/i, '')
       .replace(/[?.!]/g, '')
       .trim();
 
-    return `Beloved ${name}, thank you for bringing this authentic question into our space:
+    const turnIndex = history.length % 3;
+
+    if (turnIndex === 0) {
+      return `Beloved ${name}, thank you for bringing this authentic inquiry to light:
 
 **"${cleanMessage}"**
 
-When we explore ${topicSummary ? `"${topicSummary}"` : 'this area of your life'}, we must first honor the tension you are navigating. Often, what appears on the surface as an obstacle is actually an invitation for your next elevation.
+When we look into ${topicSummary ? `"${topicSummary}"` : 'this matter'}, the first step is separating what belongs to your divine responsibility from what is external noise. 
 
-Let us look at this through the Becoming Her sovereign lens:
-1. **Clarify what is yours to hold**: Are you trying to control things outside your immediate circle of influence, or can you pull your energy back into your own power?
-2. **Choose the aligned response**: What would happen if you chose the path that prioritizes your inner peace over winning someone else's approval?
+Let us ground this in personal sovereignty:
+1. **Name the Root**: What is the deepest belief driving this feeling right now?
+2. **Reclaim Your Center**: What is one conscious decision you can make that puts your peace above the desire to please others?
 
-If the highest, most sovereign version of the woman you are becoming were sitting with you right now—what counsel would she whisper to your heart?${memory}`;
+If your wisest, most sovereign future self were whispering counsel into your ear right now—what would she say?${memory}`;
+    }
+
+    if (turnIndex === 1) {
+      return `I hear the depth of what you are sharing, ${name}.
+
+When you reflect on **"${cleanMessage}"**, notice where in your body you feel the tension. Our bodies always register our emotional truths long before our minds find the words.
+
+Consider this gentle reframe:
+• You do not need to have everything figured out before you are allowed to experience inner calm.
+• Sovereignty means taking one faithful step in alignment with who you are becoming, rather than reacting to old scripts.
+
+What is one gentle commitment you can make to yourself before today ends to honor this awareness?${memory}`;
+    }
+
+    return `Thank you for bringing your authentic voice into this sacred space, ${name}.
+
+As we explore **"${cleanMessage}"**, remember Coach Zipporah's foundational principle: *Transformation does not occur through harsh self-criticism; it unfolds through relentless self-honoring.*
+
+Where can you soften your expectations of yourself right now, and what boundary would give you the freedom to breathe again?${memory}`;
   }
 }
 
