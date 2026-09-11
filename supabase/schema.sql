@@ -8,7 +8,7 @@ DROP TABLE IF EXISTS public.whatsapp_messages CASCADE;
 DROP TABLE IF EXISTS public.whatsapp_conversations CASCADE;
 DROP TABLE IF EXISTS public.whatsapp_contacts CASCADE;
 DROP TABLE IF EXISTS public.whatsapp_config CASCADE;
-DROP TABLE IF EXISTS public.audit_logs CASCADE;
+DROP TABLE IF EXISTS public.platform_audit_logs CASCADE;
 DROP TABLE IF EXISTS public.knowledge_documents CASCADE;
 DROP TABLE IF EXISTS public.goals CASCADE;
 DROP TABLE IF EXISTS public.reflections CASCADE;
@@ -251,7 +251,7 @@ CREATE TABLE public.knowledge_documents (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE public.audit_logs (
+CREATE TABLE IF NOT EXISTS public.platform_audit_logs (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   user_id UUID,
   user_email TEXT,
