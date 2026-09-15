@@ -14,7 +14,7 @@ import {
   X
 } from 'lucide-react';
 import { Order } from '@/types';
-import { createBrowserClient } from '@/utils/supabase/client';
+import { createClient } from '@/utils/supabase/client';
 
 export default function PurchasesDashboardPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -23,7 +23,7 @@ export default function PurchasesDashboardPage() {
 
   useEffect(() => {
     const fetchOrders = async () => {
-      const supabase = createBrowserClient();
+      const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setLoading(false);

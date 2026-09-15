@@ -14,7 +14,7 @@ import {
   FileText
 } from 'lucide-react';
 import { Order, PaymentStatus } from '@/types';
-import { createBrowserClient } from '@/utils/supabase/client';
+import { createClient } from '@/utils/supabase/client';
 
 export default function AdminPaymentsPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -28,7 +28,7 @@ export default function AdminPaymentsPage() {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const fetchOrders = async () => {
-    const supabase = createBrowserClient();
+    const supabase = createClient();
     const { data } = await supabase
       .from('orders')
       .select('*')
@@ -85,7 +85,7 @@ export default function AdminPaymentsPage() {
     const confirm = window.confirm(`Are you sure you want to refund order ${order.order_reference}? Access will be revoked.`);
     if (!confirm) return;
 
-    const supabase = createBrowserClient();
+    const supabase = createClient();
     await supabase.from('orders').update({
       payment_status: 'REFUNDED',
       updated_at: new Date().toISOString()
