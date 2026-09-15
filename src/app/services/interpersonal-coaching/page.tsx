@@ -7,7 +7,8 @@ import {
   CheckCircle2,
   Moon,
   ArrowRight,
-  User
+  User,
+  FileText
 } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
@@ -91,6 +92,34 @@ export default function InterpersonalCoachingPage() {
               </div>
             </div>
           </div>
+
+
+          {/* Included Materials & Resources */}
+          {service.resources && service.resources.length > 0 && (
+            <div className="bg-white p-6 sm:p-8 rounded-2xl border border-rose-200/60 shadow-sm space-y-4">
+              <div className="text-center space-y-2">
+                <h3 className="font-serif text-xl font-semibold text-stone-900">
+                  Included Materials & Resources
+                </h3>
+                <p className="text-xs sm:text-sm text-stone-600">
+                  These exclusive resources will be available for download in your portal immediately upon enrollment.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+                {service.resources.map((res) => (
+                  <div key={res.id} className="p-4 rounded-xl bg-stone-50 border border-stone-100 flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-rose-100 text-rose-800 flex items-center justify-center shrink-0">
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-stone-900">{res.title}</p>
+                      <p className="text-xs text-stone-500">{res.file_name} • {res.file_size || 'File'}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Booking Flow Policy Alert */}
           <div className="p-8 rounded-3xl bg-white border border-stone-200 shadow-sm space-y-6">

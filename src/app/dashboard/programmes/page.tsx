@@ -27,6 +27,7 @@ export default function ProgrammesDashboardPage() {
   const hasAccess = store.hasActiveEntitlement(customerId, 'srv-guided-01');
   const programme = store.programme;
   const book = programme.book;
+  const service = store.getServiceById('srv-guided-01');
 
   // Selected module & lesson state
   const [activeModuleId, setActiveModuleId] = useState(programme.modules[0].id);
@@ -250,6 +251,45 @@ export default function ProgrammesDashboardPage() {
               <BookMarked className="w-3.5 h-3.5" />
               <span>Read Online / View Workbook</span>
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* ADDITIONAL UNLOCKED RESOURCES CARD                                        */}
+      {/* ========================================================================= */}
+      {service?.resources && service.resources.length > 0 && (
+        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-stone-200 shadow-sm space-y-4">
+          <div className="space-y-1">
+            <h3 className="font-serif text-xl font-semibold text-stone-900">
+              Your Additional Materials
+            </h3>
+            <p className="text-xs text-stone-600">
+              Download your supplementary worksheets, audio guides, and frameworks.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {service.resources.map((res) => (
+              <div key={res.id} className="p-4 rounded-xl bg-stone-50 border border-stone-100 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-800 flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-stone-900">{res.title}</p>
+                    <p className="text-xs text-stone-500">{res.file_name} • {res.file_size || 'File'}</p>
+                  </div>
+                </div>
+                <a
+                  href={res.file_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-10 h-10 flex items-center justify-center rounded-full bg-stone-900 text-amber-50 hover:bg-rose-950 transition shadow"
+                >
+                  <Download className="w-4 h-4" />
+                </a>
+              </div>
+            ))}
           </div>
         </div>
       )}

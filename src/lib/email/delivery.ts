@@ -151,14 +151,14 @@ function buildServicePdfEmailHtml({
               <table width="100%" cellpadding="0" cellspacing="0" style="margin: 0 0 24px;">
                 ${resources.map(res => `
                 <tr>
-                  <td style="padding: 12px 0; border-bottom: 1px solid #e7e5e4;">
+                  <td style="padding: 16px; border: 1px solid #e7e5e4; border-radius: 12px; background-color: #ffffff; display: block; margin-bottom: 12px;">
                     <p style="margin: 0 0 4px; font-family: Georgia, serif; font-size: 15px; color: #1c1917; font-weight: bold;">
                       ${res.title}
                     </p>
-                    <p style="margin: 0 0 8px; font-size: 12px; color: #78716c;">
-                      ${res.file_name} &bull; ${res.file_size || 'File'}
+                    <p style="margin: 0 0 12px; font-size: 12px; color: #78716c;">
+                      File: <strong>${res.file_name}</strong> &bull; ${res.file_size || 'Accessible instantly'}
                     </p>
-                    <a href="${res.file_url}" target="_blank" style="font-size: 12px; font-weight: 600; color: #881337; text-decoration: none;">
+                    <a href="${res.file_url}" target="_blank" style="display: inline-block; background-color: #f43f5e; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-size: 12px; font-weight: 600; text-align: center;">
                       ⬇ Download File
                     </a>
                   </td>
