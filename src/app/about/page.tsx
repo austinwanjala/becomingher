@@ -59,7 +59,7 @@ export default async function AboutPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {cms.about.values.map((val, idx) => (
+              {cms.about.values.map((val: any, idx: number) => (
                 <div key={idx} className="p-6 bg-white rounded-2xl border border-stone-200/80 shadow-sm space-y-2">
                   <h4 className="font-serif font-semibold text-lg text-rose-950">{val.title}</h4>
                   <p className="text-xs text-stone-600 leading-relaxed">{val.desc}</p>
