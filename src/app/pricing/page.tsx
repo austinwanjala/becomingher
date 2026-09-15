@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Sparkles, CheckCircle2, ShieldCheck, Tag } from 'lucide-react';
+import { Gem, CheckCircle2, ShieldCheck, Tag } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { store } from '@/lib/store';

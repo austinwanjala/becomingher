@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  Sparkles,
+  Gem,
   BookOpen,
   Calendar,
   CreditCard,
@@ -59,7 +59,7 @@ export default function DashboardOverviewPage() {
         <div className="absolute top-0 right-0 w-80 h-80 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="relative space-y-3 max-w-2xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-amber-200 text-xs font-medium">
-            <Sparkles className="w-3.5 h-3.5" /> Welcome to Your Dedicated Customer Portal
+            <Gem className="w-3.5 h-3.5" /> Welcome to Your Dedicated Customer Portal
           </div>
           <h1 className="font-serif text-3xl sm:text-4xl font-semibold tracking-tight">
             Peace and expansion, {userName}.
@@ -275,7 +275,7 @@ export default function DashboardOverviewPage() {
           <div className="bg-gradient-to-br from-[#FAF8F5] to-rose-50/70 p-6 rounded-3xl border border-rose-200/70 shadow-sm space-y-4">
             <div className="flex items-center gap-2.5 text-rose-950">
               <div className="w-8 h-8 rounded-full bg-rose-950 text-amber-200 flex items-center justify-center shadow-sm">
-                <Sparkles className="w-4 h-4" />
+                <Gem className="w-4 h-4" />
               </div>
               <div>
                 <h4 className="font-serif font-semibold text-base">Digital Coaching Sanctuary</h4>

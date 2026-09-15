@@ -7,7 +7,7 @@ import {
   ShieldCheck,
   CheckCircle2,
   Calendar,
-  Sparkles,
+  Star,
   ArrowRight,
   CreditCard,
   Lock,

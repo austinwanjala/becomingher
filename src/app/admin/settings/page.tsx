@@ -12,13 +12,14 @@ import {
   Image as ImageIcon,
   Trash2,
   CheckCircle2,
-  Sparkles,
+  Feather,
   ExternalLink,
   Eye,
   RefreshCw
 } from 'lucide-react';
 import { store } from '@/lib/store';
 import { BrandLogo } from '@/components/BrandLogo';
+import { createClient } from '@/utils/supabase/client';
 
 export default function AdminSettingsPage() {
   const [businessName, setBusinessName] = useState(store.brand.name || 'Becoming Her');
@@ -40,6 +41,7 @@ export default function AdminSettingsPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const darkFileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     // Load from localStorage if present
@@ -55,29 +57,48 @@ export default function AdminSettingsPage() {
     }
   }, []);
 
-  const handleLogoFile = (file: File, isDark = false) => {
+  const handleLogoFile = async (file: File, isDark = false) => {
     if (!file.type.startsWith('image/')) {
       alert('Please select an image file (PNG, SVG, JPG, WebP).');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target?.result as string;
-      if (dataUrl) {
-        if (isDark) {
-          setDarkLogoUrl(dataUrl);
-          localStorage.setItem('becoming_her_brand_dark_logo', dataUrl);
-          setLogoNotification('Dark-mode variant logo uploaded! Click Save below.');
-        } else {
-          setLogoUrl(dataUrl);
-          localStorage.setItem('becoming_her_brand_logo', dataUrl);
-          setLogoNotification('Primary brand logo uploaded! Click Save below.');
-        }
-        setTimeout(() => setLogoNotification(null), 4000);
+    setIsUploading(true);
+    setLogoNotification('Uploading logo to secure storage...');
+    try {
+      const supabase = createClient();
+      const fileExt = file.name.split('.').pop();
+      const fileName = `logo-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `brand/${fileName}`;
+
+      const { error } = await supabase.storage
+        .from('materials')
+        .upload(filePath, file);
+
+      if (error) throw error;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('materials')
+        .getPublicUrl(filePath);
+
+      const dataUrl = publicUrlData.publicUrl;
+
+      if (isDark) {
+        setDarkLogoUrl(dataUrl);
+        localStorage.setItem('becoming_her_brand_dark_logo', dataUrl);
+        setLogoNotification('Dark-mode variant logo uploaded! Click Save below.');
+      } else {
+        setLogoUrl(dataUrl);
+        localStorage.setItem('becoming_her_brand_logo', dataUrl);
+        setLogoNotification('Primary brand logo uploaded! Click Save below.');
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err: any) {
+      console.error('Logo upload failed:', err);
+      setLogoNotification('Error uploading logo: ' + err.message);
+    } finally {
+      setIsUploading(false);
+      setTimeout(() => setLogoNotification(null), 4000);
+    }
   };
 
   const handleRemoveLogo = (isDark = false) => {
@@ -105,8 +126,33 @@ export default function AdminSettingsPage() {
     setTimeout(() => setLogoNotification(null), 4000);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    setLogoNotification('Saving settings to database...');
+
+    try {
+      const supabase = createClient();
+      
+      const { error } = await supabase
+        .from('site_brand_settings')
+        .upsert({
+          id: 'default',
+          name: businessName,
+          tagline,
+          logo_url: logoUrl,
+          logo_dark_url: darkLogoUrl,
+          logo_height_px: logoHeight,
+          updated_at: new Date().toISOString()
+        });
+        
+      if (error) {
+        console.error('Failed to save settings to DB:', error);
+        // Fallback to local storage if DB fails (e.g. table doesn't exist yet)
+      }
+    } catch (err) {
+      console.error('Failed to save settings to DB:', err);
+    }
 
     // Persist brand & logo
     const updatedBrand = store.updateBrand({
@@ -178,7 +224,7 @@ export default function AdminSettingsPage() {
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-stone-100 text-stone-700 self-start sm:self-auto">
-                <Sparkles className="w-3 h-3 text-rose-800" /> Default Sacred Monogram Active
+                <Feather className="w-3 h-3 text-rose-800" /> Default Sacred Monogram Active
               </span>
             )}
           </div>
@@ -274,7 +320,7 @@ export default function AdminSettingsPage() {
                   ) : (
                     <div className="flex items-center gap-2.5">
                       <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-rose-950 via-rose-800 to-amber-700 flex items-center justify-center text-white shadow-sm">
-                        <Sparkles className="w-4 h-4 text-amber-200" />
+                        <Feather className="w-4 h-4 text-amber-200" />
                       </div>
                       <div className="flex flex-col">
                         <span className="font-serif text-lg font-semibold text-stone-900 leading-none">
@@ -305,7 +351,7 @@ export default function AdminSettingsPage() {
                   ) : (
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-full bg-rose-950 flex items-center justify-center text-white border border-rose-800/50">
-                        <Sparkles className="w-4 h-4 text-amber-200" />
+                        <Feather className="w-4 h-4 text-amber-200" />
                       </div>
                       <div className="flex flex-col">
                         <span className="font-serif text-lg font-semibold text-white leading-none">

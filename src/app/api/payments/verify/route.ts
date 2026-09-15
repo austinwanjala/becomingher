@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { selarProvider } from '@/lib/payments/selar';
 import { store } from '@/lib/store';
+import { createAdminClient } from '@/utils/supabase/server';
+import { sendServicePdfEmail } from '@/lib/email/delivery';
+import { sendWhatsAppPostPaymentConfirmation } from '@/lib/whatsapp/notifications';
 
 export async function POST(request: Request) {
   try {
@@ -14,15 +17,22 @@ export async function POST(request: Request) {
       );
     }
 
-    const order = store.orders.find(
-      (o) =>
-        (orderId && o.id === orderId) ||
-        (transactionReference && o.transaction_reference === transactionReference)
-    );
+    const supabase = await createAdminClient();
 
-    if (!order) {
+    let query = supabase.from('orders').select('*');
+    if (orderId) {
+      query = query.eq('id', orderId);
+    } else if (transactionReference) {
+      query = query.eq('transaction_reference', transactionReference);
+    }
+    
+    const { data: orders, error: fetchError } = await query.limit(1);
+
+    if (fetchError || !orders || orders.length === 0) {
       return NextResponse.json({ error: 'Order record not found.' }, { status: 404 });
     }
+
+    const order = orders[0];
 
     // IDEMPOTENCY: If already successful, return the current confirmed state immediately
     if (order.payment_status === 'SUCCESSFUL') {
@@ -50,6 +60,11 @@ export async function POST(request: Request) {
       order.payment_status = 'SUCCESSFUL';
       order.updated_at = new Date().toISOString();
 
+      await supabase.from('orders').update({
+        payment_status: 'SUCCESSFUL',
+        updated_at: order.updated_at
+      }).eq('id', order.id);
+
       // Create or activate entitlement
       const entitlement = store.unlockEntitlement(order.customer_id, order.service_id, order.id);
 
@@ -65,8 +80,8 @@ export async function POST(request: Request) {
         `Payment for Order ${order.order_reference} verified (${order.amount} ${order.currency}). Access unlocked.`
       );
 
-      // Dispatch WhatsApp notification asynchronously
-      import('@/lib/whatsapp/notifications').then(({ sendWhatsAppPostPaymentConfirmation }) => {
+      // Dispatch notifications asynchronously, but we MUST await them so the serverless function doesn't exit prematurely
+      const results = await Promise.allSettled([
         sendWhatsAppPostPaymentConfirmation({
           customerEmail: order.customer_email,
           customerName: order.customer_name,
@@ -75,19 +90,23 @@ export async function POST(request: Request) {
           amount: order.amount,
           currency: order.currency,
           serviceId: order.service_id
-        });
-      }).catch(console.error);
-
-      // Dispatch Service PDF & Materials Email to Customer asynchronously
-      import('@/lib/email/delivery').then(({ sendServicePdfEmail }) => {
+        }),
         sendServicePdfEmail({
           customerEmail: order.customer_email,
           customerName: order.customer_name,
           serviceId: order.service_id,
           serviceTitle: order.service_name,
           orderReference: order.order_reference
-        });
-      }).catch(console.error);
+        })
+      ]);
+
+      results.forEach((res, index) => {
+        if (res.status === 'rejected') {
+          console.error(`[VERIFY_ROUTE] Task ${index} failed:`, res.reason);
+        } else {
+          console.log(`[VERIFY_ROUTE] Task ${index} succeeded:`, res.value);
+        }
+      });
 
       return NextResponse.json({
         verified: true,
@@ -98,6 +117,12 @@ export async function POST(request: Request) {
       });
     } else {
       order.payment_status = 'FAILED';
+      
+      await supabase.from('orders').update({
+        payment_status: 'FAILED',
+        updated_at: new Date().toISOString()
+      }).eq('id', order.id);
+
       store.addAuditLog(
         'PAYMENT_FAILED',
         'PAYMENTS',

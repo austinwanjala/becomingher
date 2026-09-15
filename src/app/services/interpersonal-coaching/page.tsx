@@ -5,7 +5,7 @@ import {
   ShieldCheck,
   Video,
   CheckCircle2,
-  Sparkles,
+  Moon,
   ArrowRight,
   User
 } from 'lucide-react';

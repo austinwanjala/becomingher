@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import {
-  Sparkles,
+  Star,
   Send,
   Target,
   Plus,
@@ -247,7 +247,7 @@ How is your spirit feeling today, and what area of your personal elevation would
           <div className="p-4 sm:p-5 border-b border-stone-100 flex items-center justify-between bg-[#FAF8F5]">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-full bg-rose-950 text-amber-200 flex items-center justify-center">
-                <Sparkles className="w-4 h-4" />
+                <Star className="w-4 h-4" />
               </div>
               <div>
                 <h3 className="font-serif font-semibold text-sm text-stone-900">Sanctuary Reflection Companion</h3>
@@ -287,7 +287,7 @@ How is your spirit feeling today, and what area of your personal elevation would
               >
                 {msg.role === 'assistant' && (
                   <div className="w-7 h-7 rounded-full bg-rose-950 text-amber-200 flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
-                    <Sparkles className="w-3.5 h-3.5" />
+                    <Star className="w-3.5 h-3.5" />
                   </div>
                 )}
                 <div

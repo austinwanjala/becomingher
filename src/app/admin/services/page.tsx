@@ -11,7 +11,7 @@ import {
   ExternalLink,
   Save,
   X,
-  Sparkles,
+  Sun,
   DollarSign,
   Mail,
   Send,
@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { store } from '@/lib/store';
 import { Service, ServiceType } from '@/types';
+import { createClient } from '@/utils/supabase/client';
 
 export default function AdminServicesPage() {
   const [services, setServices] = useState<Service[]>(store.services);
@@ -47,6 +48,45 @@ export default function AdminServicesPage() {
   const [testEmailRecipient, setTestEmailRecipient] = useState('');
   const [isTestingEmail, setIsTestingEmail] = useState(false);
   const [testEmailStatus, setTestEmailStatus] = useState<string | null>(null);
+
+  // Upload state
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setUploadError(null);
+    try {
+      const supabase = createClient();
+      
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `products/${fileName}`;
+
+      const { error } = await supabase.storage
+        .from('materials')
+        .upload(filePath, file);
+
+      if (error) throw error;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('materials')
+        .getPublicUrl(filePath);
+
+      setPdfUrl(publicUrlData.publicUrl);
+      setPdfName(file.name);
+      if (!pdfTitle) setPdfTitle(file.name.replace(/\.[^/.]+$/, ""));
+      
+    } catch (err: any) {
+      console.error('Upload failed:', err);
+      setUploadError(err.message || 'Failed to upload file');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const startEdit = (srv: Service) => {
     setEditingService(srv);
@@ -374,16 +414,18 @@ export default function AdminServicesPage() {
                   />
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="font-medium text-stone-700">Service Slug (URL)</label>
-                  <input
-                    type="text"
-                    required
-                    value={slug}
-                    onChange={(e) => setSlug(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300"
-                  />
-                </div>
+                {type !== 'DIGITAL_PRODUCT' && (
+                  <div className="space-y-1.5">
+                    <label className="font-medium text-stone-700">Service Slug (URL)</label>
+                    <input
+                      type="text"
+                      required
+                      value={slug}
+                      onChange={(e) => setSlug(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300"
+                    />
+                  </div>
+                )}
 
                 <div className="space-y-1.5">
                   <label className="font-medium text-stone-700">Service Access Type</label>
@@ -395,6 +437,7 @@ export default function AdminServicesPage() {
                     <option value="DIGITAL_PROGRAMME">DIGITAL_PROGRAMME</option>
                     <option value="CUSTOM_COACHING">CUSTOM_COACHING</option>
                     <option value="INTERPERSONAL_SESSION">INTERPERSONAL_SESSION</option>
+                    <option value="DIGITAL_PRODUCT">DIGITAL_PRODUCT</option>
                   </select>
                 </div>
 
@@ -419,45 +462,49 @@ export default function AdminServicesPage() {
                   />
                 </div>
 
-                <div className="space-y-1.5 sm:col-span-2">
-                  <label className="font-medium text-stone-700">Duration / Schedule Description</label>
-                  <input
-                    type="text"
-                    value={duration}
-                    onChange={(e) => setDuration(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300"
-                    placeholder="e.g. 4 Modules (Self-Paced) or 60 Minutes Live Video"
-                  />
-                </div>
+                {type !== 'DIGITAL_PRODUCT' && (
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <label className="font-medium text-stone-700">Duration / Schedule Description</label>
+                    <input
+                      type="text"
+                      value={duration}
+                      onChange={(e) => setDuration(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300"
+                      placeholder="e.g. 4 Modules (Self-Paced) or 60 Minutes Live Video"
+                    />
+                  </div>
+                )}
 
                 {/* Selar Product Mapping Section */}
-                <div className="sm:col-span-2 p-4 bg-rose-50/60 rounded-2xl border border-rose-200/80 space-y-3">
-                  <h4 className="font-serif font-semibold text-rose-950 text-sm">
-                    Selar E-Commerce Product Configuration
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="font-medium text-stone-700">Selar Product ID</label>
-                      <input
-                        type="text"
-                        value={selarProductId}
-                        onChange={(e) => setSelarProductId(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono text-xs bg-white"
-                        placeholder="e.g. v09683c927"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="font-medium text-stone-700">Selar Product Checkout URL</label>
-                      <input
-                        type="url"
-                        value={selarProductUrl}
-                        onChange={(e) => setSelarProductUrl(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono text-xs bg-white"
-                        placeholder="https://selar.com/v09683c927"
-                      />
+                {type !== 'DIGITAL_PRODUCT' && (
+                  <div className="sm:col-span-2 p-4 bg-rose-50/60 rounded-2xl border border-rose-200/80 space-y-3">
+                    <h4 className="font-serif font-semibold text-rose-950 text-sm">
+                      Selar E-Commerce Product Configuration
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="font-medium text-stone-700">Selar Product ID</label>
+                        <input
+                          type="text"
+                          value={selarProductId}
+                          onChange={(e) => setSelarProductId(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono text-xs bg-white"
+                          placeholder="e.g. v09683c927"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-medium text-stone-700">Selar Product Checkout URL</label>
+                        <input
+                          type="url"
+                          value={selarProductUrl}
+                          onChange={(e) => setSelarProductUrl(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono text-xs bg-white"
+                          placeholder="https://selar.com/v09683c927"
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* Service PDF Materials & Email Fulfillment Section */}
                 <div className="sm:col-span-2 p-4 bg-amber-50/70 rounded-2xl border border-amber-200/90 space-y-3">
@@ -470,6 +517,22 @@ export default function AdminServicesPage() {
                   <p className="text-xs text-stone-600">
                     Specify the workbook, guidebook, or companion PDF file that should be automatically delivered to the customer's email upon payment.
                   </p>
+                  
+                  {type === 'DIGITAL_PRODUCT' && (
+                    <div className="p-4 border border-amber-200 bg-white rounded-xl space-y-3">
+                      <label className="font-medium text-stone-700 text-xs block">Upload Product File (PDF)</label>
+                      <input 
+                        type="file" 
+                        accept="application/pdf"
+                        onChange={handleFileUpload}
+                        disabled={isUploading}
+                        className="text-xs file:mr-4 file:py-1.5 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-amber-100 file:text-amber-800 hover:file:bg-amber-200 cursor-pointer"
+                      />
+                      {isUploading && <p className="text-amber-600 flex items-center gap-2 text-xs mt-2"><Loader2 className="w-3 h-3 animate-spin" /> Uploading to secure storage...</p>}
+                      {uploadError && <p className="text-red-500 text-xs mt-2">{uploadError}</p>}
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="font-medium text-stone-700 text-xs">PDF Material Title</label>
@@ -504,25 +567,29 @@ export default function AdminServicesPage() {
                   </div>
                 </div>
 
-                <div className="space-y-1.5 sm:col-span-2">
-                  <label className="font-medium text-stone-700">Short Summary</label>
-                  <textarea
-                    rows={2}
-                    value={shortDesc}
-                    onChange={(e) => setShortDesc(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300"
-                  />
-                </div>
+                {type !== 'DIGITAL_PRODUCT' && (
+                  <>
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <label className="font-medium text-stone-700">Short Summary</label>
+                      <textarea
+                        rows={2}
+                        value={shortDesc}
+                        onChange={(e) => setShortDesc(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300"
+                      />
+                    </div>
 
-                <div className="space-y-1.5 sm:col-span-2">
-                  <label className="font-medium text-stone-700">Full Description</label>
-                  <textarea
-                    rows={3}
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300"
-                  />
-                </div>
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <label className="font-medium text-stone-700">Full Description</label>
+                      <textarea
+                        rows={3}
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300"
+                      />
+                    </div>
+                  </>
+                )}
 
                 <div className="sm:col-span-2 flex items-center gap-6 pt-2">
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -535,15 +602,17 @@ export default function AdminServicesPage() {
                     <span>Service is Published & Active</span>
                   </label>
 
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isFeatured}
-                      onChange={(e) => setIsFeatured(e.target.checked)}
-                      className="rounded text-rose-950"
-                    />
-                    <span>Featured on Homepage</span>
-                  </label>
+                  {type !== 'DIGITAL_PRODUCT' && (
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isFeatured}
+                        onChange={(e) => setIsFeatured(e.target.checked)}
+                        className="rounded text-rose-950"
+                      />
+                      <span>Featured on Homepage</span>
+                    </label>
+                  )}
                 </div>
               </div>
 
@@ -563,7 +632,7 @@ export default function AdminServicesPage() {
                   className="px-6 py-2.5 rounded-xl bg-stone-900 text-white font-semibold hover:bg-rose-950 transition flex items-center gap-1.5 shadow"
                 >
                   <Save className="w-4 h-4" />
-                  <span>Save Configuration</span>
+                  <span>{isUploading ? 'Uploading...' : 'Save Configuration'}</span>
                 </button>
               </div>
             </form>

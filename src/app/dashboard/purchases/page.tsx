@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   CreditCard,
@@ -8,19 +8,42 @@ import {
   Printer,
   Download,
   CheckCircle2,
-  Sparkles,
+  Gem,
   ExternalLink,
   ShieldCheck,
   X
 } from 'lucide-react';
-import { store } from '@/lib/store';
 import { Order } from '@/types';
+import { createBrowserClient } from '@/utils/supabase/client';
 
 export default function PurchasesDashboardPage() {
-  const customerId = 'cust-demo-01';
-  const orders = store.orders.filter((o) => o.customer_id === customerId);
-
+  const [orders, setOrders] = useState<Order[]>([]);
   const [selectedReceipt, setSelectedReceipt] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      const supabase = createBrowserClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+      
+      const { data } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('customer_id', user.id)
+        .order('created_at', { ascending: false });
+        
+      if (data) {
+        setOrders(data as Order[]);
+      }
+      setLoading(false);
+    };
+    
+    fetchOrders();
+  }, []);
 
   const handlePrint = () => {
     window.print();
@@ -40,7 +63,9 @@ export default function PurchasesDashboardPage() {
       <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-stone-100 flex items-center justify-between">
           <h3 className="font-serif text-lg font-semibold text-stone-900">Order History</h3>
-          <span className="text-xs text-stone-500 font-medium">{orders.length} Purchases</span>
+          <span className="text-xs text-stone-500 font-medium">
+            {loading ? 'Loading...' : `${orders.length} Purchases`}
+          </span>
         </div>
 
         <div className="divide-y divide-stone-100">
@@ -84,9 +109,14 @@ export default function PurchasesDashboardPage() {
             </div>
           ))}
 
-          {orders.length === 0 && (
+          {!loading && orders.length === 0 && (
             <div className="p-12 text-center text-xs text-stone-500">
               No purchase records found.
+            </div>
+          )}
+          {loading && (
+            <div className="p-12 text-center text-xs text-stone-500 animate-pulse">
+              Loading purchase records...
             </div>
           )}
         </div>
@@ -106,7 +136,7 @@ export default function PurchasesDashboardPage() {
             {/* Receipt Header */}
             <div className="text-center space-y-2 border-b border-stone-200 pb-6">
               <div className="w-10 h-10 rounded-full bg-rose-950 text-white flex items-center justify-center mx-auto shadow">
-                <Sparkles className="w-5 h-5 text-amber-200" />
+                <Gem className="w-5 h-5 text-amber-200" />
               </div>
               <h3 className="font-serif text-2xl font-bold text-stone-900">Becoming Her</h3>
               <p className="text-xs text-stone-500 uppercase tracking-widest">

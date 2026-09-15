@@ -7,7 +7,7 @@ import {
   MessageCircle,
   X,
   Send,
-  Sparkles,
+  Feather,
   ShieldCheck,
   RotateCcw,
   ExternalLink,
@@ -417,7 +417,7 @@ export function FloatingWhatsApp() {
                 {/* Security / Encryption Notice */}
                 <div className="flex justify-center my-1">
                   <div className="bg-[#FFF4C7] text-[#554000] text-[10px] px-3 py-1 rounded-lg text-center max-w-[90%] shadow-2xs border border-[#FFE28A]/60 flex items-center gap-1.5 leading-snug">
-                    <Sparkles className="w-3 h-3 shrink-0 text-amber-700" />
+                    <Feather className="w-3 h-3 shrink-0 text-amber-700" />
                     <span>Confidential coaching sanctuary grounded in Becoming Her transformation modules.</span>
                   </div>
                 </div>

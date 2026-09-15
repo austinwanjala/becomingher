@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   CreditCard,
   CheckCircle2,
@@ -13,11 +13,12 @@ import {
   ArrowDownRight,
   FileText
 } from 'lucide-react';
-import { store } from '@/lib/store';
 import { Order, PaymentStatus } from '@/types';
+import { createBrowserClient } from '@/utils/supabase/client';
 
 export default function AdminPaymentsPage() {
-  const [orders, setOrders] = useState<Order[]>(store.orders);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
 
@@ -25,6 +26,23 @@ export default function AdminPaymentsPage() {
   const [verifyingOrder, setVerifyingOrder] = useState<Order | null>(null);
   const [manualReason, setManualReason] = useState('Customer confirmed payment via Selar dashboard receipt.');
   const [isProcessing, setIsProcessing] = useState(false);
+
+  const fetchOrders = async () => {
+    const supabase = createBrowserClient();
+    const { data } = await supabase
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (data) {
+      setOrders(data as Order[]);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
 
   // Filtered orders
   const filteredOrders = orders.filter((o) => {
@@ -55,12 +73,7 @@ export default function AdminPaymentsPage() {
 
       const data = await res.json();
       if (res.ok) {
-        setOrders([...store.orders]);
-        store.addAuditLog(
-          'MANUAL_PAYMENT_VERIFIED',
-          'PAYMENTS',
-          `Order ${verifyingOrder.order_reference} manually verified by Admin. Reason: ${manualReason}`
-        );
+        await fetchOrders();
       }
     } finally {
       setIsProcessing(false);
@@ -68,18 +81,18 @@ export default function AdminPaymentsPage() {
     }
   };
 
-  const handleRefund = (order: Order) => {
+  const handleRefund = async (order: Order) => {
     const confirm = window.confirm(`Are you sure you want to refund order ${order.order_reference}? Access will be revoked.`);
     if (!confirm) return;
 
-    order.payment_status = 'REFUNDED';
-    const ent = store.entitlements.find((e) => e.order_id === order.id);
-    if (ent) {
-      ent.status = 'REVOKED';
-    }
+    const supabase = createBrowserClient();
+    await supabase.from('orders').update({
+      payment_status: 'REFUNDED',
+      updated_at: new Date().toISOString()
+    }).eq('id', order.id);
 
-    setOrders([...store.orders]);
-    store.addAuditLog('ORDER_REFUNDED', 'ORDERS', `Order ${order.order_reference} refunded and entitlement revoked.`);
+    // Refresh orders
+    await fetchOrders();
   };
 
   return (
@@ -144,7 +157,6 @@ export default function AdminPaymentsPage() {
             </thead>
             <tbody className="divide-y divide-stone-100 text-stone-700">
               {filteredOrders.map((order) => {
-                const entitlement = store.entitlements.find((e) => e.order_id === order.id);
 
                 return (
                   <tr key={order.id} className="hover:bg-stone-50/60 transition">
@@ -179,11 +191,6 @@ export default function AdminPaymentsPage() {
                       >
                         {order.payment_status}
                       </span>
-                      {entitlement && (
-                        <span className="block text-[10px] text-emerald-700 mt-0.5">
-                          • Entitlement: {entitlement.status}
-                        </span>
-                      )}
                     </td>
                     <td className="p-4 text-stone-500">
                       {new Date(order.created_at).toLocaleDateString()}

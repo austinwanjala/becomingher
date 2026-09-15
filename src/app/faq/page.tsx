@@ -1,4 +1,4 @@
-import { Sparkles, HelpCircle } from 'lucide-react';
+import { Heart, HelpCircle } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { store } from '@/lib/store';

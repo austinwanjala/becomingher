@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Sparkles, CheckCircle2, ArrowRight, Brain, ClipboardList, ShieldCheck, HeartHandshake } from 'lucide-react';
+import { Gem, CheckCircle2, ArrowRight, Brain, ClipboardList, ShieldCheck, HeartHandshake } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { store } from '@/lib/store';
@@ -27,7 +27,7 @@ export default function CustomCoachingPage() {
         <section className="py-16 bg-gradient-to-b from-[#F7F3EE] to-[#FAF8F5] border-b border-stone-200/60">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-5">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-100 text-rose-950 text-xs font-semibold">
-              <Sparkles className="w-3.5 h-3.5 text-rose-700" /> Bespoke & Intentionally Architected
+              <Gem className="w-3.5 h-3.5 text-rose-700" /> Bespoke & Intentionally Architected
             </div>
             <h1 className="font-serif text-3xl sm:text-5xl font-semibold text-stone-900">
               {service.name}

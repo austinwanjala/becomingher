@@ -1,6 +1,6 @@
 export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'COACH' | 'CUSTOMER';
 
-export type ServiceType = 'DIGITAL_PROGRAMME' | 'CUSTOM_COACHING' | 'INTERPERSONAL_SESSION';
+export type ServiceType = 'DIGITAL_PROGRAMME' | 'CUSTOM_COACHING' | 'INTERPERSONAL_SESSION' | 'DIGITAL_PRODUCT';
 
 export type PaymentStatus = 
   | 'PENDING' 

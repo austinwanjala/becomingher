@@ -8,7 +8,7 @@ import {
   Lock,
   PlayCircle,
   FileText,
-  Sparkles,
+  Sun,
   ChevronRight,
   ArrowRight,
   Save,
@@ -215,7 +215,7 @@ export default function ProgrammesDashboardPage() {
 
             <div className="space-y-1.5 max-w-xl">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-200 text-[10px] font-bold uppercase tracking-wider border border-amber-300/20">
-                <Sparkles className="w-3 h-3 text-amber-300" />
+                <Sun className="w-3 h-3 text-amber-300" />
                 <span>Your Included Companion Book</span>
               </div>
               <h3 className="font-serif text-lg sm:text-xl font-semibold text-amber-50">

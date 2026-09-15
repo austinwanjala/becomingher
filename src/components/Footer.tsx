@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Sparkles, Heart, ExternalLink, ShieldCheck } from 'lucide-react';
+import { Feather, Heart, ExternalLink, ShieldCheck } from 'lucide-react';
 import { store } from '@/lib/store';
 import { BrandLogo } from '@/components/BrandLogo';
 

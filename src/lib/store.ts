@@ -120,6 +120,33 @@ class Store {
       selar_product_id: 'v09683c927',
       selar_product_url: 'https://selar.com/v09683c927',
       created_at: new Date().toISOString()
+    },
+    {
+      id: 'srv-book-04',
+      slug: 'companion-workbook',
+      type: 'DIGITAL_PRODUCT',
+      name: 'Becoming Her Companion Workbook',
+      short_description: 'The official guided digital workbook and reflection companion designed to help you unlock the woman you are becoming.',
+      description: 'A transformative 142-page digital workbook packed with structured weekly inquiries, somatic embodiment practices, habit architecture matrices, and transformative journaling frameworks. Perfect for self-paced independent reflection.',
+      price: 500,
+      currency: 'KES',
+      image_url: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=800',
+      duration: 'Lifetime Access (PDF)',
+      is_active: true,
+      is_featured: true,
+      features: [
+        '142 Pages of Guided Prompts and Frameworks',
+        'Instant Digital Download (PDF)',
+        'Print-ready high-resolution format',
+        'Somatic Embodiment Exercises',
+        'Self-paced reflection journey'
+      ],
+      selar_product_id: 'v09683c927', // Placeholder, update later
+      selar_product_url: 'https://selar.com/v09683c927', // Placeholder
+      pdf_url: '/materials/becoming-her-companion-workbook.pdf',
+      pdf_name: 'becoming-her-companion-workbook.pdf',
+      pdf_title: 'Becoming Her Sacred Companion Workbook',
+      created_at: new Date().toISOString()
     }
   ];
 

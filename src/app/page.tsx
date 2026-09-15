@@ -1,13 +1,12 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import {
-  Sparkles,
+  Star,
   ArrowRight,
   CheckCircle2,
   Calendar,
   Compass,
   HeartHandshake,
-  Star,
   ShieldCheck,
   ChevronRight,
   BookOpen
@@ -38,7 +37,7 @@ export default function HomePage() {
               {/* Left Column Text */}
               <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
                 <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-rose-100/70 border border-rose-200/80 text-rose-950 text-xs font-semibold tracking-wide shadow-sm">
-                  <Sparkles className="w-3.5 h-3.5 text-rose-700" />
+                  <Star className="w-3.5 h-3.5 text-rose-700" />
                   <span>{cms.hero.badge}</span>
                 </div>
 
@@ -83,7 +82,7 @@ export default function HomePage() {
                     <span>Instant Entitlement Unlock</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-amber-600" />
+                    <Star className="w-4 h-4 text-amber-600" />
                     <span>Guided Reflection Sanctuary</span>
                   </div>
                 </div>
@@ -323,7 +322,7 @@ export default function HomePage() {
                   <div className="p-6 bg-white rounded-2xl shadow-sm border border-stone-200/80 space-y-3">
                     <div className="flex items-center gap-2">
                       <div className="w-6 h-6 rounded-full bg-rose-950 text-amber-200 flex items-center justify-center">
-                        <Sparkles className="w-3.5 h-3.5" />
+                        <Star className="w-3.5 h-3.5" />
                       </div>
                       <span className="text-xs font-semibold text-stone-900">Sanctuary Reflection Companion</span>
                     </div>
@@ -418,7 +417,7 @@ export default function HomePage() {
         <section className="py-20 bg-gradient-to-r from-stone-900 via-rose-950 to-stone-900 text-white relative overflow-hidden text-center">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-900/60 border border-rose-700/60 text-amber-200 text-xs font-medium">
-              <Sparkles className="w-3.5 h-3.5" /> Your Sovereign Next Step
+              <Star className="w-3.5 h-3.5" /> Your Sovereign Next Step
             </div>
 
             <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight leading-tight">

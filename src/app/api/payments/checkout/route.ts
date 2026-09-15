@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { selarProvider } from '@/lib/payments/selar';
 import { store } from '@/lib/store';
-import { createClient } from '@/utils/supabase/server';
+import { createClient, createAdminClient } from '@/utils/supabase/server';
 
 export async function POST(request: Request) {
   try {
@@ -39,8 +39,9 @@ export async function POST(request: Request) {
     }
 
     const effectiveCustomerId = user ? user.id : (body.customerId as string);
-    const effectiveCustomerEmail = user?.email || customerEmail;
-    const effectiveCustomerName = user?.user_metadata?.name || customerName;
+    // Prefer form input over account defaults so users can specify where materials are sent
+    const effectiveCustomerEmail = customerEmail || user?.email;
+    const effectiveCustomerName = customerName || user?.user_metadata?.name;
 
     if (!serviceId || !effectiveCustomerEmail || !effectiveCustomerName) {
       return NextResponse.json(
@@ -149,7 +150,19 @@ export async function POST(request: Request) {
     });
 
     pendingOrder.transaction_reference = checkout.transactionReference;
-    store.orders.unshift(pendingOrder);
+
+    const adminSupabase = await createAdminClient();
+    const { error: insertError } = await adminSupabase
+      .from('orders')
+      .insert(pendingOrder);
+
+    if (insertError) {
+      console.error('Error inserting order to Supabase:', insertError);
+      return NextResponse.json(
+        { error: 'Database error while creating order.' },
+        { status: 500 }
+      );
+    }
 
     // Record compliance acceptance for this order
     const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'unknown';

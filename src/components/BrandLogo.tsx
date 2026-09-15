@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Sparkles } from 'lucide-react';
 import { store } from '@/lib/store';
+import { createClient } from '@/utils/supabase/client';
 
 interface BrandLogoProps {
   variant?: 'light' | 'dark' | 'auto';
@@ -26,7 +26,7 @@ export function BrandLogo({
   const [tagline, setTagline] = useState<string>(store.brand.tagline || 'Digital Sanctuary');
 
   useEffect(() => {
-    // Initial sync with localStorage if set by admin
+    // 1. Fallback initial sync with localStorage (loads instantly)
     const storedLogo = localStorage.getItem('becoming_her_brand_logo');
     const storedDarkLogo = localStorage.getItem('becoming_her_brand_dark_logo');
     const storedName = localStorage.getItem('becoming_her_brand_name');
@@ -43,6 +43,44 @@ export function BrandLogo({
       setBrandName(storedName);
       store.brand.name = storedName;
     }
+
+    // 2. Fetch fresh settings from the database
+    const fetchBrandSettings = async () => {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('site_brand_settings')
+          .select('*')
+          .eq('id', 'default')
+          .single();
+
+        if (data && !error) {
+          if (data.logo_url) {
+            setLogoUrl(data.logo_url);
+            store.brand.logo_url = data.logo_url;
+            localStorage.setItem('becoming_her_brand_logo', data.logo_url);
+          }
+          if (data.logo_dark_url) {
+            setDarkLogoUrl(data.logo_dark_url);
+            store.brand.logo_dark_url = data.logo_dark_url;
+            localStorage.setItem('becoming_her_brand_dark_logo', data.logo_dark_url);
+          }
+          if (data.name) {
+            setBrandName(data.name);
+            store.brand.name = data.name;
+            localStorage.setItem('becoming_her_brand_name', data.name);
+          }
+          if (data.tagline) {
+            setTagline(data.tagline);
+            store.brand.tagline = data.tagline;
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch brand settings from DB:', err);
+      }
+    };
+
+    fetchBrandSettings();
 
     const handleBrandUpdate = (e: CustomEvent) => {
       if (e.detail?.logo_url !== undefined) setLogoUrl(e.detail.logo_url);
@@ -84,18 +122,12 @@ export function BrandLogo({
 
   const content = (
     <div className={`flex items-center gap-2.5 group select-none ${className}`}>
-      {activeLogo ? (
+      {activeLogo && (
         <img
           src={activeLogo}
           alt={brandName}
           className={`${sizeStyles.img} w-auto object-contain transition-transform group-hover:scale-105 duration-200`}
         />
-      ) : (
-        <div
-          className={`${sizeStyles.icon} rounded-full bg-gradient-to-tr from-rose-950 via-rose-800 to-amber-700 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition duration-200 shrink-0`}
-        >
-          <Sparkles className={`${sizeStyles.sparkle} text-amber-200`} />
-        </div>
       )}
 
       {showText && (

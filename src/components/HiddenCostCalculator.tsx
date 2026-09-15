@@ -7,7 +7,7 @@ import {
   Briefcase,
   Users,
   HeartPulse,
-  Sparkles,
+  Gem,
   ArrowRight,
   RotateCcw,
   Check,
@@ -75,7 +75,7 @@ const COST_ITEMS: CostItem[] = [
     description: 'What would it be worth to wake up feeling truly at ease with who you are?',
     weeklyHours: 5,
     financialImpactKES: 120000,
-    icon: Sparkles,
+    icon: Gem,
     category: 'Sovereignty',
     breakdown: 'Living in perpetual defense mode instead of serene, grounded confidence and alignment.'
   }
@@ -254,7 +254,7 @@ export function HiddenCostCalculator() {
               {/* The Contrast / Invitation */}
               <div className="p-4 rounded-xl bg-white/10 border border-amber-300/30 space-y-2">
                 <h4 className="font-serif text-sm font-semibold text-amber-100 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  <Gem className="w-3.5 h-3.5 text-amber-300" />
                   <span>The Becoming Her Breakthrough Alternative</span>
                 </h4>
                 <p className="text-xs text-stone-200 leading-relaxed">

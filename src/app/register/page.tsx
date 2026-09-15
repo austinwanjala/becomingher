@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import Link from 'next/link'
-import { Sparkles, AlertCircle, ArrowLeft } from 'lucide-react'
+import { Heart, AlertCircle, ArrowLeft } from 'lucide-react'
 import { RegisterForm } from '@/components/RegisterForm'
 
 export default async function RegisterPage({
@@ -41,7 +41,7 @@ export default async function RegisterPage({
         <div className="text-center space-y-2">
           <Link href="/" className="inline-flex items-center gap-2 group">
             <div className="w-8 h-8 rounded-full bg-rose-950 flex items-center justify-center text-amber-100 shadow">
-              <Sparkles className="w-4 h-4" />
+              <Heart className="w-4 h-4" />
             </div>
             <span className="font-serif text-2xl font-bold tracking-tight text-rose-950 group-hover:text-stone-900 transition">
               Becoming Her

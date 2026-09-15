@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { Sparkles, AlertCircle, ArrowLeft } from 'lucide-react'
+import { Gem, AlertCircle, ArrowLeft } from 'lucide-react'
 import { BrandLogo } from '@/components/BrandLogo'
 
 import { redirect } from 'next/navigation'

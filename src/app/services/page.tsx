@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Sparkles, CheckCircle2, Clock, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Star, CheckCircle2, Clock, ArrowRight, ShieldCheck } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { store } from '@/lib/store';
@@ -16,7 +16,7 @@ export default function ServicesPage() {
         <section className="pt-16 pb-14 bg-gradient-to-b from-[#F7F3EE] to-[#FAF8F5] text-center">
           <div className="max-w-4xl mx-auto px-4 space-y-4">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-100 text-rose-950 text-xs font-semibold">
-              <Sparkles className="w-3.5 h-3.5 text-rose-700" /> Coaching Catalogue
+              <Star className="w-3.5 h-3.5 text-rose-700" /> Coaching Catalogue
             </div>
             <h1 className="font-serif text-4xl sm:text-5xl font-semibold text-stone-900">
               Coaching Containers Designed for Lasting Alignment

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, X, Sparkles, User, LogOut, BookOpen, Calendar, CreditCard } from 'lucide-react';
+import { Menu, X, Gem, User, LogOut, BookOpen, Calendar, CreditCard } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import { BrandLogo } from '@/components/BrandLogo';
 import { performClientSignOut } from '@/lib/auth/session';

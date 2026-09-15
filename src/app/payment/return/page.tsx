@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { CheckCircle2, Loader2, AlertCircle, ArrowRight, ShieldCheck, Sparkles, Calendar } from 'lucide-react';
+import { CheckCircle2, Loader2, AlertCircle, ArrowRight, ShieldCheck, Feather, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 function PaymentReturnContent() {
@@ -74,7 +74,7 @@ function PaymentReturnContent() {
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-stone-200/80 p-8 text-center space-y-6">
         {/* Brand indicator */}
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-50 text-rose-800 text-xs font-medium tracking-wide">
-          <Sparkles className="w-3.5 h-3.5 text-rose-600" /> Becoming Her Sanctuary
+          <Feather className="w-3.5 h-3.5 text-rose-600" /> Becoming Her Sanctuary
         </div>
 
         {/* Status Graphic */}

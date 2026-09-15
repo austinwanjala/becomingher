@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Brain, Plus, Trash2, Edit2, Save, Sparkles, BookOpen, ShieldCheck } from 'lucide-react';
+import { Brain, Plus, Trash2, Edit2, Save, Heart, BookOpen, ShieldCheck } from 'lucide-react';
 import { store } from '@/lib/store';
 import { KnowledgeDocument } from '@/types';
 

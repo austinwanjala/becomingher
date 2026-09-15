@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { selarProvider } from '@/lib/payments/selar';
 import { store } from '@/lib/store';
+import { createAdminClient } from '@/utils/supabase/server';
+import { sendServicePdfEmail } from '@/lib/email/delivery';
+import { sendWhatsAppPostPaymentConfirmation } from '@/lib/whatsapp/notifications';
 
 export async function POST(request: Request) {
   try {
@@ -22,9 +25,14 @@ export async function POST(request: Request) {
     }
 
     // IDEMPOTENCY CHECK: Find existing order by transaction reference
-    const existingOrder = store.orders.find(
-      (o) => o.transaction_reference === result.transactionReference
-    );
+    const supabase = await createAdminClient();
+    const { data: orders } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('transaction_reference', result.transactionReference)
+      .limit(1);
+
+    const existingOrder = orders && orders.length > 0 ? orders[0] : undefined;
 
     if (existingOrder) {
       if (existingOrder.payment_status === 'SUCCESSFUL') {
@@ -40,6 +48,11 @@ export async function POST(request: Request) {
       existingOrder.payment_status = result.status;
       existingOrder.updated_at = new Date().toISOString();
 
+      await supabase.from('orders').update({
+        payment_status: result.status,
+        updated_at: existingOrder.updated_at
+      }).eq('id', existingOrder.id);
+
       if (result.status === 'SUCCESSFUL') {
         store.unlockEntitlement(existingOrder.customer_id, existingOrder.service_id, existingOrder.id);
         if (existingOrder.metadata?.bookingId) {
@@ -51,8 +64,8 @@ export async function POST(request: Request) {
           `Order ${existingOrder.order_reference} confirmed via Selar webhook.`
         );
 
-        // Dispatch WhatsApp notification asynchronously
-        import('@/lib/whatsapp/notifications').then(({ sendWhatsAppPostPaymentConfirmation }) => {
+        // Dispatch notifications asynchronously, but MUST await so Vercel doesn't kill the process
+        await Promise.allSettled([
           sendWhatsAppPostPaymentConfirmation({
             customerEmail: existingOrder.customer_email,
             customerName: existingOrder.customer_name,
@@ -61,8 +74,15 @@ export async function POST(request: Request) {
             amount: existingOrder.amount,
             currency: existingOrder.currency,
             serviceId: existingOrder.service_id
-          });
-        });
+          }),
+          sendServicePdfEmail({
+            customerEmail: existingOrder.customer_email,
+            customerName: existingOrder.customer_name,
+            serviceId: existingOrder.service_id,
+            serviceTitle: existingOrder.service_name,
+            orderReference: existingOrder.order_reference
+          })
+        ]);
       }
 
       return NextResponse.json({ status: 'ok', orderReference: existingOrder.order_reference });
@@ -89,10 +109,11 @@ export async function POST(request: Request) {
         transaction_reference: result.transactionReference,
         amount: result.amount,
         currency: result.currency,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
 
-      store.orders.unshift(newOrder);
+      await supabase.from('orders').insert(newOrder);
       store.unlockEntitlement(newOrder.customer_id, matchedService.id, newOrder.id);
 
       store.addAuditLog(
@@ -101,18 +122,26 @@ export async function POST(request: Request) {
         `New order ${orderRef} created and unlocked for ${result.customerEmail} via Selar webhook.`
       );
 
-      // Dispatch WhatsApp notification asynchronously
-      import('@/lib/whatsapp/notifications').then(({ sendWhatsAppPostPaymentConfirmation }) => {
-        sendWhatsAppPostPaymentConfirmation({
-          customerEmail: newOrder.customer_email,
-          customerName: newOrder.customer_name,
-          orderReference: newOrder.order_reference,
-          serviceTitle: newOrder.service_name,
-          amount: newOrder.amount,
-          currency: newOrder.currency,
-          serviceId: newOrder.service_id
-        });
-      });
+      if (newOrder.payment_status === 'SUCCESSFUL') {
+        await Promise.allSettled([
+          sendWhatsAppPostPaymentConfirmation({
+            customerEmail: newOrder.customer_email,
+            customerName: newOrder.customer_name,
+            orderReference: newOrder.order_reference,
+            serviceTitle: newOrder.service_name,
+            amount: newOrder.amount,
+            currency: newOrder.currency,
+            serviceId: newOrder.service_id
+          }),
+          sendServicePdfEmail({
+            customerEmail: newOrder.customer_email,
+            customerName: newOrder.customer_name,
+            serviceId: newOrder.service_id,
+            serviceTitle: newOrder.service_name,
+            orderReference: newOrder.order_reference
+          })
+        ]);
+      }
 
       return NextResponse.json({
         status: 'ok',

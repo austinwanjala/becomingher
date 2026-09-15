@@ -18,7 +18,7 @@ import {
   ExternalLink,
   FileCheck,
   X,
-  Sparkles,
+  Award,
   Layers,
   AlertCircle
 } from 'lucide-react';
@@ -302,7 +302,7 @@ export default function AdminProgrammesPage() {
             {/* Book Details */}
             <div className="md:col-span-6 space-y-2 text-xs">
               <div className="flex items-center gap-2 text-rose-900">
-                <Sparkles className="w-3.5 h-3.5" />
+                <Award className="w-3.5 h-3.5" />
                 <span className="text-[10px] font-bold uppercase tracking-wider">
                   Official Included Companion
                 </span>

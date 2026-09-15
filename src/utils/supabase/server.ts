@@ -61,3 +61,27 @@ export async function createClient() {
     }
   )
 }
+
+export async function createAdminClient() {
+  const url = getValidSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!key) {
+    console.warn('SUPABASE_SERVICE_ROLE_KEY is not defined. Falling back to ANON key (RLS will apply).');
+  }
+
+  return createServerClient(
+    url,
+    key || getValidSupabaseKey(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+    {
+      cookies: {
+        getAll() {
+          return []
+        },
+        setAll(cookiesToSet) {
+          // No-op for admin client
+        },
+      },
+    }
+  )
+}

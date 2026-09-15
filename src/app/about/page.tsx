@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Sparkles, Heart, Compass, ShieldCheck } from 'lucide-react';
+import { Feather, Heart, Compass, ShieldCheck } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { store } from '@/lib/store';
@@ -15,7 +15,7 @@ export default function AboutPage() {
         <section className="py-16 bg-gradient-to-b from-[#F7F3EE] to-[#FAF8F5] text-center border-b border-stone-200/60">
           <div className="max-w-4xl mx-auto px-4 space-y-4">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-100 text-rose-950 text-xs font-semibold">
-              <Sparkles className="w-3.5 h-3.5 text-rose-700" /> Sacred Story & Mission
+              <Feather className="w-3.5 h-3.5 text-rose-700" /> Sacred Story & Mission
             </div>
             <h1 className="font-serif text-4xl sm:text-5xl font-semibold text-stone-900">
               {cms.about.heading}
@@ -41,7 +41,7 @@ export default function AboutPage() {
 
             <div className="bg-white p-8 rounded-3xl border border-stone-200 shadow-sm space-y-3">
               <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-900 flex items-center justify-center">
-                <Sparkles className="w-5 h-5" />
+                <Feather className="w-5 h-5" />
               </div>
               <h3 className="font-serif text-xl font-semibold text-stone-900">Our Vision</h3>
               <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">

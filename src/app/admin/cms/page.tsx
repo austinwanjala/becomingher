@@ -7,7 +7,7 @@ import {
   Check,
   Plus,
   Trash2,
-  Sparkles,
+  Gem,
   HelpCircle,
   Star,
   ExternalLink

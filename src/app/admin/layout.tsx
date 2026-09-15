@@ -9,7 +9,7 @@ import {
   LogOut,
   FileText,
   Calendar,
-  Sparkles,
+  Moon,
   Globe,
   Tag,
   BookOpen,
@@ -117,7 +117,7 @@ export default async function AdminLayout({
               href="/dashboard"
               className="flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium text-stone-600 hover:bg-stone-50"
             >
-              <Sparkles className="h-4 w-4 text-rose-800" />
+              <Moon className="h-4 w-4 text-rose-800" />
               <span>Switch to Customer View</span>
             </Link>
 

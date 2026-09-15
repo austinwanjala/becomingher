@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   BookOpen,
-  Sparkles,
+  Feather,
   Calendar,
   CreditCard,
   User,
@@ -69,7 +69,7 @@ export default function CustomerDashboardLayout({
   const navItems = [
     { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
     { name: 'My Programmes', href: '/dashboard/programmes', icon: BookOpen },
-    { name: 'Reflection & Goals', href: '/dashboard/coaching', icon: Sparkles },
+    { name: 'Reflection & Goals', href: '/dashboard/coaching', icon: Feather },
     { name: 'My Sessions', href: '/dashboard/sessions', icon: Calendar },
     { name: 'Purchases & Receipts', href: '/dashboard/purchases', icon: CreditCard },
     { name: 'My Profile', href: '/dashboard/profile', icon: User },
@@ -164,7 +164,7 @@ export default function CustomerDashboardLayout({
             href="/services"
             className="flex items-center gap-2 text-xs font-medium text-rose-900 hover:text-rose-950 p-2 rounded-lg hover:bg-rose-50 transition"
           >
-            <Sparkles className="w-4 h-4 text-rose-700" />
+            <Feather className="w-4 h-4 text-rose-700" />
             <span>Explore Coaching Services</span>
           </Link>
 

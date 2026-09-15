@@ -10,7 +10,7 @@ import {
   Headphones,
   Settings,
   RefreshCw,
-  Sparkles,
+  Gem,
   CheckCircle2,
   AlertCircle,
   Clock,
@@ -191,7 +191,7 @@ export default function AdminWhatsAppPage() {
             </span>
             <div className="flex items-baseline justify-between">
               <span className="text-2xl font-bold text-stone-900">{metrics.serviceInquiries}</span>
-              <Sparkles className="w-4 h-4 text-amber-600" />
+              <Gem className="w-4 h-4 text-amber-600" />
             </div>
             <span className="text-[10px] text-stone-500 font-medium mt-1 block">
               Pricing shared
