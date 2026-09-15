@@ -232,8 +232,8 @@ export async function sendServicePdfEmail(params: SendServicePdfEmailParams): Pr
         html: htmlContent
       };
 
-      // If PDF URL is a public web link, attach it or let them download via link
-      if (downloadUrl.startsWith('http://') || downloadUrl.startsWith('https://')) {
+      // If PDF URL is a public web link (and not localhost), attach it directly
+      if ((downloadUrl.startsWith('http://') || downloadUrl.startsWith('https://')) && !downloadUrl.includes('localhost')) {
         emailPayload.attachments = [
           {
             filename: finalPdf.name,
