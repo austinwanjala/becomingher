@@ -44,17 +44,33 @@ export default function AdminSettingsPage() {
   const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
-    // Load from localStorage if present
+    // 1. Local fallback
     const cachedLogo = localStorage.getItem('becoming_her_brand_logo');
     const cachedDarkLogo = localStorage.getItem('becoming_her_brand_dark_logo');
-    if (cachedLogo) {
-      setLogoUrl(cachedLogo);
-      store.brand.logo_url = cachedLogo;
-    }
-    if (cachedDarkLogo) {
-      setDarkLogoUrl(cachedDarkLogo);
-      store.brand.logo_dark_url = cachedDarkLogo;
-    }
+    const cachedName = localStorage.getItem('becoming_her_brand_name');
+    if (cachedLogo) setLogoUrl(cachedLogo);
+    if (cachedDarkLogo) setDarkLogoUrl(cachedDarkLogo);
+    if (cachedName) setBusinessName(cachedName);
+
+    // 2. Fetch from DB
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch('/api/settings');
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.brand) {
+            if (data.brand.logo_url) setLogoUrl(data.brand.logo_url);
+            if (data.brand.logo_dark_url) setDarkLogoUrl(data.brand.logo_dark_url);
+            if (data.brand.name) setBusinessName(data.brand.name);
+            if (data.brand.tagline) setTagline(data.brand.tagline);
+            if (data.brand.logo_height_px) setLogoHeight(data.brand.logo_height_px);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch settings:', err);
+      }
+    };
+    fetchSettings();
   }, []);
 
   const handleLogoFile = async (file: File, isDark = false) => {
@@ -105,12 +121,10 @@ export default function AdminSettingsPage() {
     if (isDark) {
       setDarkLogoUrl('');
       localStorage.removeItem('becoming_her_brand_dark_logo');
-      store.updateBrand({ logo_dark_url: '' });
       setLogoNotification('Dark logo removed. Fallback logo will be used.');
     } else {
       setLogoUrl('');
       localStorage.removeItem('becoming_her_brand_logo');
-      store.resetBrandLogo();
       setLogoNotification('Brand logo reset to the default Becoming Her sacred monogram.');
     }
 
@@ -128,40 +142,26 @@ export default function AdminSettingsPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-
     setLogoNotification('Saving settings to database...');
 
-    try {
-      const supabase = createClient();
-      
-      const { error } = await supabase
-        .from('site_brand_settings')
-        .upsert({
-          id: 'default',
-          name: businessName,
-          tagline,
-          logo_url: logoUrl,
-          logo_dark_url: darkLogoUrl,
-          logo_height_px: logoHeight,
-          updated_at: new Date().toISOString()
-        });
-        
-      if (error) {
-        console.error('Failed to save settings to DB:', error);
-        // Fallback to local storage if DB fails (e.g. table doesn't exist yet)
-      }
-    } catch (err) {
-      console.error('Failed to save settings to DB:', err);
-    }
-
-    // Persist brand & logo
-    const updatedBrand = store.updateBrand({
+    const brandData = {
       name: businessName,
       tagline,
       logo_url: logoUrl,
       logo_dark_url: darkLogoUrl,
       logo_height_px: logoHeight
-    });
+    };
+
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brand: brandData })
+      });
+      if (!res.ok) throw new Error('Failed to save settings');
+    } catch (err) {
+      console.error('Failed to save settings to DB:', err);
+    }
 
     localStorage.setItem('becoming_her_brand_logo', logoUrl);
     localStorage.setItem('becoming_her_brand_dark_logo', darkLogoUrl);
@@ -170,7 +170,7 @@ export default function AdminSettingsPage() {
     // Dispatch global event for instant reactive update in Navbar/Footer/Admin
     window.dispatchEvent(
       new CustomEvent('becoming_her_brand_updated', {
-        detail: updatedBrand
+        detail: brandData
       })
     );
 

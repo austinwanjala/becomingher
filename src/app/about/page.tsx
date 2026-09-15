@@ -3,9 +3,10 @@ import { Feather, Heart, Compass, ShieldCheck } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { store } from '@/lib/store';
+import { getSettings } from '@/utils/settings';
 
-export default function AboutPage() {
-  const cms = store.cms;
+export default async function AboutPage() {
+  const { cms } = await getSettings();
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF8F5] text-stone-900">

@@ -14,10 +14,11 @@ import {
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { store } from '@/lib/store';
+import { getSettings } from '@/utils/settings';
 import { HiddenCostCalculator } from '@/components/HiddenCostCalculator';
 
-export default function HomePage() {
-  const cms = store.cms;
+export default async function HomePage() {
+  const { cms } = await getSettings();
   const services = store.getServices();
   const testimonials = store.testimonials.filter((t) => t.is_published);
   const faqs = store.faqs.filter((f) => f.is_published);

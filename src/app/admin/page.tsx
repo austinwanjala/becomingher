@@ -14,13 +14,14 @@ import {
   Plus
 } from 'lucide-react';
 import { store } from '@/lib/store';
+import { getSettings } from '@/utils/settings';
 
-export default function AdminOverviewPage() {
+export default async function AdminOverviewPage() {
   const services = store.getServices();
   const orders = store.orders;
   const bookings = store.bookings;
   const entitlements = store.entitlements;
-  const cms = store.cms;
+  const { cms } = await getSettings();
 
   const totalRevenue = orders
     .filter((o) => o.payment_status === 'SUCCESSFUL')

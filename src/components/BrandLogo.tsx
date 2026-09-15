@@ -26,53 +26,42 @@ export function BrandLogo({
   const [tagline, setTagline] = useState<string>(store.brand.tagline || 'Digital Sanctuary');
 
   useEffect(() => {
-    // 1. Fallback initial sync with localStorage (loads instantly)
+    // 1. Initial fallback from memory/localStorage
     const storedLogo = localStorage.getItem('becoming_her_brand_logo');
     const storedDarkLogo = localStorage.getItem('becoming_her_brand_dark_logo');
     const storedName = localStorage.getItem('becoming_her_brand_name');
 
-    if (storedLogo) {
-      setLogoUrl(storedLogo);
-      store.brand.logo_url = storedLogo;
-    }
-    if (storedDarkLogo) {
-      setDarkLogoUrl(storedDarkLogo);
-      store.brand.logo_dark_url = storedDarkLogo;
-    }
-    if (storedName) {
-      setBrandName(storedName);
-      store.brand.name = storedName;
-    }
+    if (storedLogo) setLogoUrl(storedLogo);
+    if (storedDarkLogo) setDarkLogoUrl(storedDarkLogo);
+    if (storedName) setBrandName(storedName);
 
     // 2. Fetch fresh settings from the database
+    let isMounted = true;
     const fetchBrandSettings = async () => {
       try {
         const supabase = createClient();
         const { data, error } = await supabase
-          .from('site_brand_settings')
-          .select('*')
-          .eq('id', 'default')
+          .from('site_settings')
+          .select('brand')
+          .eq('id', 'global')
           .single();
 
-        if (data && !error) {
-          if (data.logo_url) {
-            setLogoUrl(data.logo_url);
-            store.brand.logo_url = data.logo_url;
-            localStorage.setItem('becoming_her_brand_logo', data.logo_url);
+        if (data?.brand && !error && isMounted) {
+          const brand = data.brand;
+          if (brand.logo_url) {
+            setLogoUrl(brand.logo_url);
+            localStorage.setItem('becoming_her_brand_logo', brand.logo_url);
           }
-          if (data.logo_dark_url) {
-            setDarkLogoUrl(data.logo_dark_url);
-            store.brand.logo_dark_url = data.logo_dark_url;
-            localStorage.setItem('becoming_her_brand_dark_logo', data.logo_dark_url);
+          if (brand.logo_dark_url) {
+            setDarkLogoUrl(brand.logo_dark_url);
+            localStorage.setItem('becoming_her_brand_dark_logo', brand.logo_dark_url);
           }
-          if (data.name) {
-            setBrandName(data.name);
-            store.brand.name = data.name;
-            localStorage.setItem('becoming_her_brand_name', data.name);
+          if (brand.name) {
+            setBrandName(brand.name);
+            localStorage.setItem('becoming_her_brand_name', brand.name);
           }
-          if (data.tagline) {
-            setTagline(data.tagline);
-            store.brand.tagline = data.tagline;
+          if (brand.tagline) {
+            setTagline(brand.tagline);
           }
         }
       } catch (err) {
@@ -90,6 +79,7 @@ export function BrandLogo({
 
     window.addEventListener('becoming_her_brand_updated' as any, handleBrandUpdate);
     return () => {
+      isMounted = false;
       window.removeEventListener('becoming_her_brand_updated' as any, handleBrandUpdate);
     };
   }, []);

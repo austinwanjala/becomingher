@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Globe,
   Save,
@@ -23,12 +23,42 @@ export default function AdminCMSPage() {
   const [activeTab, setActiveTab] = useState<'hero' | 'about' | 'contact' | 'testimonials' | 'faq'>('hero');
   const [savedMessage, setSavedMessage] = useState('');
 
+  useEffect(() => {
+    const fetchCMS = async () => {
+      try {
+        const res = await fetch('/api/settings');
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.cms) setCms(data.cms);
+        }
+      } catch (err) {
+        console.error('Failed to fetch CMS settings:', err);
+      }
+    };
+    fetchCMS();
+  }, []);
+
   // Save changes handler
-  const handleSaveCMS = (e: React.FormEvent) => {
+  const handleSaveCMS = async (e: React.FormEvent) => {
     e.preventDefault();
-    store.cms = cms;
-    store.addAuditLog('CMS_UPDATED', 'WEBSITE_CONTENT', `CMS sections updated (${activeTab})`);
-    setSavedMessage('✓ Website content updated and live!');
+    setSavedMessage('Saving...');
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cms })
+      });
+      if (res.ok) {
+        store.cms = cms; // local fallback update
+        store.addAuditLog('CMS_UPDATED', 'WEBSITE_CONTENT', `CMS sections updated (${activeTab})`);
+        setSavedMessage('✓ Website content updated and live!');
+      } else {
+        setSavedMessage('Error saving settings.');
+      }
+    } catch (err) {
+      console.error(err);
+      setSavedMessage('Error saving settings.');
+    }
     setTimeout(() => setSavedMessage(''), 3000);
   };
 

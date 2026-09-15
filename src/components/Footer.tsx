@@ -1,3 +1,6 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Feather, Heart, ExternalLink, ShieldCheck } from 'lucide-react';
 import { store } from '@/lib/store';
@@ -5,7 +8,16 @@ import { BrandLogo } from '@/components/BrandLogo';
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
-  const cms = store.cms;
+  const [cms, setCms] = useState(store.cms);
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then(r => r.json())
+      .then(d => {
+        if (d?.cms) setCms(d.cms);
+      })
+      .catch(console.error);
+  }, []);
 
   return (
     <footer className="bg-stone-900 text-stone-300 pt-16 pb-12 border-t border-stone-800">
