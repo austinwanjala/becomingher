@@ -87,7 +87,7 @@ export function Navbar() {
                 <div className="w-6 h-6 rounded-full bg-rose-950 text-amber-100 flex items-center justify-center text-[10px] font-bold">
                   {userName.charAt(0).toUpperCase()}
                 </div>
-                <span>Customer Portal</span>
+                <span>Dashboard</span>
               </Link>
               <button
                 onClick={handleSignOut}
@@ -99,13 +99,6 @@ export function Navbar() {
             </div>
           ) : (
             <div className="flex items-center gap-2.5">
-              <Link
-                href="/login?redirect=/dashboard"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-stone-300 hover:border-rose-400 bg-stone-50 hover:bg-rose-50/70 text-stone-800 hover:text-rose-950 text-xs font-semibold transition shadow-xs"
-              >
-                <User className="w-3.5 h-3.5 text-rose-800" />
-                <span>Customer Portal</span>
-              </Link>
               <Link
                 href="/login"
                 className="text-xs font-medium text-stone-700 hover:text-rose-900 transition px-2 py-1.5"
@@ -162,7 +155,7 @@ export function Navbar() {
                   onClick={() => setMobileMenuOpen(false)}
                   className="w-full py-2.5 px-4 text-center text-sm font-semibold text-rose-950 bg-rose-100/80 rounded-xl"
                 >
-                  My Customer Portal ({userName})
+                  Dashboard ({userName})
                 </Link>
                 <button
                   onClick={() => {
@@ -176,14 +169,6 @@ export function Navbar() {
               </>
             ) : (
               <div className="space-y-2">
-                <Link
-                  href="/login?redirect=/dashboard"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-center gap-2 w-full py-2.5 px-4 text-center text-sm font-semibold text-rose-950 bg-rose-100/90 hover:bg-rose-100 rounded-xl transition"
-                >
-                  <User className="w-4 h-4 text-rose-800" />
-                  <span>Customer Portal</span>
-                </Link>
                 <div className="grid grid-cols-2 gap-2">
                   <Link
                     href="/login"

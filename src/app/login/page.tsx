@@ -125,15 +125,7 @@ export default async function LoginPage({
               </Link>
             </div>
 
-            <div className="pt-2 text-center text-[11px] text-stone-500">
-              <span>Are you an executive staff member? </span>
-              <Link
-                href="/admin/login"
-                className="text-stone-700 hover:text-rose-950 font-medium underline transition"
-              >
-                Admin Console Sign In →
-              </Link>
-            </div>
+
           </CardContent>
         </Card>
 

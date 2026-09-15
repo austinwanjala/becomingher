@@ -32,6 +32,15 @@ export interface UserProfile {
   updated_at?: string;
 }
 
+export interface ServiceResource {
+  id: string;
+  title: string;
+  file_name: string;
+  file_url: string;
+  file_size?: string;
+  file_type?: string;
+}
+
 export interface Service {
   id: string;
   type: ServiceType;
@@ -51,6 +60,7 @@ export interface Service {
   pdf_url?: string;
   pdf_name?: string;
   pdf_title?: string;
+  resources?: ServiceResource[];
   created_at: string;
   updated_at?: string;
 }

@@ -130,12 +130,7 @@ export default function AdminLoginPage({
               </Button>
             </form>
 
-            <div className="pt-4 border-t border-stone-800/80 text-center text-xs text-stone-500">
-              <span>Looking for customer portal? </span>
-              <Link href="/login" className="text-rose-400 hover:text-amber-200 underline font-medium transition">
-                Customer Sign In
-              </Link>
-            </div>
+
           </CardContent>
         </Card>
 

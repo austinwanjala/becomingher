@@ -183,7 +183,7 @@ export default async function HomePage() {
                         href={`/checkout/${service.id}`}
                         className="w-full py-3 rounded-xl bg-stone-900 text-amber-50 text-xs font-semibold text-center hover:bg-rose-950 transition shadow"
                       >
-                        {service.type === 'INTERPERSONAL_SESSION' ? 'Schedule & Reserve Slot' : 'Enroll via Selar Checkout'}
+                        {service.type === 'INTERPERSONAL_SESSION' ? 'Schedule & Reserve Slot' : 'Enroll'}
                       </Link>
                       <Link
                         href={`/services/${service.slug}`}

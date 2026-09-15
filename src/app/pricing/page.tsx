@@ -83,7 +83,7 @@ export default function PricingPage() {
                         : 'bg-stone-900 text-white hover:bg-rose-950'
                     }`}
                   >
-                    Select & Enroll via Selar
+                    Select & Enroll
                   </Link>
                 </div>
               </div>

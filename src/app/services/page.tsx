@@ -95,7 +95,7 @@ export default function ServicesPage() {
                       href={`/checkout/${service.id}`}
                       className="px-6 py-3 rounded-xl bg-stone-900 text-amber-50 text-xs font-semibold hover:bg-rose-950 transition shadow"
                     >
-                      Enroll via Selar
+                      Enroll
                     </Link>
                   </div>
                 </div>

@@ -7,6 +7,7 @@
 
 import { store } from '@/lib/store';
 import { SHORT_DISCLAIMER } from '@/lib/disclaimer';
+import { ServiceResource } from '@/types';
 
 export interface SendServicePdfEmailParams {
   customerEmail: string;
@@ -17,6 +18,7 @@ export interface SendServicePdfEmailParams {
   pdfUrl?: string;
   pdfName?: string;
   pdfTitle?: string;
+  resources?: ServiceResource[];
 }
 
 export interface EmailDeliveryResult {
@@ -69,7 +71,8 @@ function buildServicePdfEmailHtml({
   orderReference,
   pdfTitle,
   pdfName,
-  downloadUrl
+  downloadUrl,
+  resources
 }: {
   customerName: string;
   serviceTitle: string;
@@ -77,6 +80,7 @@ function buildServicePdfEmailHtml({
   pdfTitle: string;
   pdfName: string;
   downloadUrl: string;
+  resources?: ServiceResource[];
 }) {
   const brandName = store.brand?.name || 'Becoming Her';
   const currentYear = new Date().getFullYear();
@@ -138,6 +142,30 @@ function buildServicePdfEmailHtml({
                   </td>
                 </tr>
               </table>
+
+              ${resources && resources.length > 0 ? `
+              <!-- Additional Resources -->
+              <h4 style="margin: 28px 0 8px; font-size: 14px; font-weight: 600; color: #1c1917;">
+                Additional Included Resources:
+              </h4>
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin: 0 0 24px;">
+                ${resources.map(res => `
+                <tr>
+                  <td style="padding: 12px 0; border-bottom: 1px solid #e7e5e4;">
+                    <p style="margin: 0 0 4px; font-family: Georgia, serif; font-size: 15px; color: #1c1917; font-weight: bold;">
+                      ${res.title}
+                    </p>
+                    <p style="margin: 0 0 8px; font-size: 12px; color: #78716c;">
+                      ${res.file_name} &bull; ${res.file_size || 'File'}
+                    </p>
+                    <a href="${res.file_url}" target="_blank" style="font-size: 12px; font-weight: 600; color: #881337; text-decoration: none;">
+                      ⬇ Download File
+                    </a>
+                  </td>
+                </tr>
+                `).join('')}
+              </table>
+              ` : ''}
 
               <!-- Member Portal Access -->
               <h4 style="margin: 28px 0 8px; font-size: 14px; font-weight: 600; color: #1c1917;">
@@ -219,7 +247,8 @@ export async function sendServicePdfEmail(params: SendServicePdfEmailParams): Pr
     orderReference,
     pdfTitle: finalPdf.title,
     pdfName: finalPdf.name,
-    downloadUrl
+    downloadUrl,
+    resources: params.resources || store.getServiceById(serviceId)?.resources || []
   });
 
   // 1. If RESEND_API_KEY is available, dispatch via Resend REST API
@@ -240,6 +269,20 @@ export async function sendServicePdfEmail(params: SendServicePdfEmailParams): Pr
             path: downloadUrl
           }
         ];
+      }
+
+      // Also attach additional resources if they are valid URLs
+      const allResources = params.resources || store.getServiceById(serviceId)?.resources || [];
+      if (allResources.length > 0) {
+        if (!emailPayload.attachments) emailPayload.attachments = [];
+        allResources.forEach(res => {
+          if ((res.file_url.startsWith('http://') || res.file_url.startsWith('https://')) && !res.file_url.includes('localhost')) {
+            emailPayload.attachments.push({
+              filename: res.file_name,
+              path: res.file_url
+            });
+          }
+        });
       }
 
       const res = await fetch('https://api.resend.com/emails', {

@@ -19,7 +19,7 @@ import {
   FileDown
 } from 'lucide-react';
 import { store } from '@/lib/store';
-import { Service, ServiceType } from '@/types';
+import { Service, ServiceType, ServiceResource } from '@/types';
 import { createClient } from '@/utils/supabase/client';
 
 export default function AdminServicesPage() {
@@ -41,6 +41,7 @@ export default function AdminServicesPage() {
   const [pdfTitle, setPdfTitle] = useState('');
   const [pdfName, setPdfName] = useState('');
   const [pdfUrl, setPdfUrl] = useState('');
+  const [resources, setResources] = useState<ServiceResource[]>([]);
   const [isActive, setIsActive] = useState(true);
   const [isFeatured, setIsFeatured] = useState(false);
 
@@ -88,6 +89,51 @@ export default function AdminServicesPage() {
     }
   };
 
+  const handleResourceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    setUploadError(null);
+    try {
+      const supabase = createClient();
+      const newResources: ServiceResource[] = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = `products/${fileName}`;
+
+        const { error } = await supabase.storage
+          .from('materials')
+          .upload(filePath, file);
+
+        if (error) throw error;
+
+        const { data: publicUrlData } = supabase.storage
+          .from('materials')
+          .getPublicUrl(filePath);
+
+        newResources.push({
+          id: `res-${Date.now()}-${i}`,
+          title: file.name.replace(/\.[^/.]+$/, ""),
+          file_name: file.name,
+          file_url: publicUrlData.publicUrl,
+          file_size: (file.size / (1024 * 1024)).toFixed(1) + ' MB',
+          file_type: fileExt?.toUpperCase() || 'FILE'
+        });
+      }
+
+      setResources(prev => [...prev, ...newResources]);
+    } catch (err: any) {
+      console.error('Resource upload failed:', err);
+      setUploadError(err.message || 'Failed to upload resources');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const startEdit = (srv: Service) => {
     setEditingService(srv);
     setName(srv.name);
@@ -103,6 +149,7 @@ export default function AdminServicesPage() {
     setPdfTitle(srv.pdf_title || (srv.type === 'DIGITAL_PROGRAMME' ? 'Becoming Her Sacred Companion Workbook & Manifesto' : `${srv.name} Materials`));
     setPdfName(srv.pdf_name || (srv.type === 'DIGITAL_PROGRAMME' ? 'becoming-her-companion-workbook.pdf' : `${srv.slug}-materials.pdf`));
     setPdfUrl(srv.pdf_url || '/materials/becoming-her-companion-workbook.pdf');
+    setResources(srv.resources || []);
     setIsActive(srv.is_active);
     setIsFeatured(srv.is_featured);
     setIsCreating(false);
@@ -123,6 +170,7 @@ export default function AdminServicesPage() {
     setPdfTitle('Becoming Her Sacred Companion Workbook');
     setPdfName('becoming-her-companion-workbook.pdf');
     setPdfUrl('/materials/becoming-her-companion-workbook.pdf');
+    setResources([]);
     setIsActive(true);
     setIsFeatured(false);
     setIsCreating(true);
@@ -150,6 +198,7 @@ export default function AdminServicesPage() {
             pdf_title: pdfTitle,
             pdf_name: pdfName,
             pdf_url: pdfUrl,
+            resources: resources,
             is_active: isActive,
             is_featured: isFeatured,
             updated_at: new Date().toISOString()
@@ -180,6 +229,7 @@ export default function AdminServicesPage() {
         pdf_title: pdfTitle,
         pdf_name: pdfName,
         pdf_url: pdfUrl,
+        resources: resources,
         is_active: isActive,
         is_featured: isFeatured,
         created_at: new Date().toISOString()
@@ -565,6 +615,66 @@ export default function AdminServicesPage() {
                       />
                     </div>
                   </div>
+                </div>
+
+                {/* Additional Resources / Attachments Section */}
+                <div className="sm:col-span-2 p-4 bg-stone-50/70 rounded-2xl border border-stone-200/90 space-y-4 mt-2">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-stone-600" />
+                    <h4 className="font-serif font-semibold text-stone-900 text-sm">
+                      Additional Resources & Attachments
+                    </h4>
+                  </div>
+                  <p className="text-xs text-stone-600">
+                    Upload supplementary files (worksheets, audio guides, templates) that apply to the whole Service. These will be included in the fulfillment email.
+                  </p>
+
+                  <div className="p-4 border border-stone-200 bg-white rounded-xl space-y-3">
+                    <label className="font-medium text-stone-700 text-xs block">Upload Resources</label>
+                    <input 
+                      type="file" 
+                      multiple
+                      onChange={handleResourceUpload}
+                      disabled={isUploading}
+                      className="text-xs file:mr-4 file:py-1.5 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-stone-100 file:text-stone-800 hover:file:bg-stone-200 cursor-pointer"
+                    />
+                  </div>
+
+                  {resources.length > 0 && (
+                    <div className="space-y-2 mt-4">
+                      {resources.map((res, index) => (
+                        <div key={res.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-white border border-stone-200 rounded-xl gap-3">
+                          <div className="flex-1 space-y-1">
+                            <input
+                              type="text"
+                              value={res.title}
+                              onChange={(e) => {
+                                const newRes = [...resources];
+                                newRes[index].title = e.target.value;
+                                setResources(newRes);
+                              }}
+                              className="w-full px-2 py-1 text-xs font-semibold text-stone-900 border-b border-transparent hover:border-stone-200 focus:border-stone-400 focus:outline-none bg-transparent"
+                              placeholder="Resource Title"
+                            />
+                            <div className="px-2 text-[10px] text-stone-500 font-mono">
+                              {res.file_name} • {res.file_size}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newRes = [...resources];
+                              newRes.splice(index, 1);
+                              setResources(newRes);
+                            }}
+                            className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded self-end sm:self-center"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {type !== 'DIGITAL_PRODUCT' && (

@@ -69,6 +69,7 @@ class Store {
       ],
       selar_product_id: 'v09683c927',
       selar_product_url: 'https://selar.com/v09683c927',
+      resources: [],
       created_at: new Date().toISOString()
     },
     {
@@ -94,6 +95,7 @@ class Store {
       ],
       selar_product_id: 'v09683c927',
       selar_product_url: 'https://selar.com/v09683c927',
+      resources: [],
       created_at: new Date().toISOString()
     },
     {
@@ -119,6 +121,7 @@ class Store {
       ],
       selar_product_id: 'v09683c927',
       selar_product_url: 'https://selar.com/v09683c927',
+      resources: [],
       created_at: new Date().toISOString()
     },
     {
@@ -146,6 +149,7 @@ class Store {
       pdf_url: '/materials/becoming-her-companion-workbook.pdf',
       pdf_name: 'becoming-her-companion-workbook.pdf',
       pdf_title: 'Becoming Her Sacred Companion Workbook',
+      resources: [],
       created_at: new Date().toISOString()
     }
   ];
