@@ -264,7 +264,7 @@ export async function sendServicePdfEmail(params: SendServicePdfEmailParams): Pr
       };
 
       // If PDF URL is a public web link (and not localhost), attach it directly
-      if (downloadUrl && (downloadUrl.startsWith('http://') || downloadUrl.startsWith('https://')) && !downloadUrl.includes('localhost')) {
+      if (downloadUrl && typeof downloadUrl === 'string' && (downloadUrl.startsWith('http://') || downloadUrl.startsWith('https://')) && !downloadUrl.includes('localhost')) {
         emailPayload.attachments = [
           {
             filename: finalPdf?.name || 'materials.pdf',
@@ -274,12 +274,12 @@ export async function sendServicePdfEmail(params: SendServicePdfEmailParams): Pr
       }
 
       // Also attach additional resources if they are valid URLs
-      if (allResources.length > 0) {
+      if (allResources && allResources.length > 0) {
         if (!emailPayload.attachments) emailPayload.attachments = [];
         allResources.forEach(res => {
-          if ((res.file_url.startsWith('http://') || res.file_url.startsWith('https://')) && !res.file_url.includes('localhost')) {
+          if (res && res.file_url && typeof res.file_url === 'string' && (res.file_url.startsWith('http://') || res.file_url.startsWith('https://')) && !res.file_url.includes('localhost')) {
             emailPayload.attachments.push({
-              filename: res.file_name,
+              filename: res.file_name || 'attachment',
               path: res.file_url
             });
           }
