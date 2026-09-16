@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { selarProvider } from '@/lib/payments/selar';
 import { store } from '@/lib/store';
 import { createClient, createAdminClient } from '@/utils/supabase/server';
+import { getServiceById } from '@/lib/services';
 
 export async function POST(request: Request) {
   try {
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const service = store.getServiceById(serviceId);
+    const service = await getServiceById(serviceId);
     if (!service) {
       return NextResponse.json({ error: 'Service not found.' }, { status: 404 });
     }

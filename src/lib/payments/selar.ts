@@ -1,5 +1,6 @@
 import { PaymentProvider, CreateCheckoutParams, CheckoutResult, VerifyPaymentResult } from './provider';
 import { store } from '@/lib/store';
+import { getServiceById } from '@/lib/services';
 
 export class SelarPaymentProvider implements PaymentProvider {
   public name = 'SELAR';
@@ -12,7 +13,7 @@ export class SelarPaymentProvider implements PaymentProvider {
    * passing customer information and tracking parameters.
    */
   public async createCheckout(params: CreateCheckoutParams): Promise<CheckoutResult> {
-    const service = store.getServiceById(params.serviceId);
+    const service = await getServiceById(params.serviceId);
     const productId = service?.selar_product_id || this.defaultProductId;
     let baseUrl = service?.selar_product_url || `https://selar.com/${productId}`;
 

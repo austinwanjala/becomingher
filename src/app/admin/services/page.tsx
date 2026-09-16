@@ -21,9 +21,12 @@ import {
 import { store } from '@/lib/store';
 import { Service, ServiceType, ServiceResource } from '@/types';
 import { createClient } from '@/utils/supabase/client';
+import { getServices, saveService } from '@/lib/services';
+import { useEffect } from 'react';
 
 export default function AdminServicesPage() {
-  const [services, setServices] = useState<Service[]>(store.services);
+  const [services, setServices] = useState<Service[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
@@ -49,6 +52,15 @@ export default function AdminServicesPage() {
   const [testEmailRecipient, setTestEmailRecipient] = useState('');
   const [isTestingEmail, setIsTestingEmail] = useState(false);
   const [testEmailStatus, setTestEmailStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchServices() {
+      const data = await getServices();
+      setServices(data);
+      setIsLoading(false);
+    }
+    fetchServices();
+  }, []);
 
   // Upload state
   const [isUploading, setIsUploading] = useState(false);
@@ -176,40 +188,39 @@ export default function AdminServicesPage() {
     setIsCreating(true);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsUploading(true); // Re-use isUploading as a general saving state
 
     if (editingService) {
       // Update
-      const updated = services.map((s) => {
-        if (s.id === editingService.id) {
-          return {
-            ...s,
-            name,
-            slug,
-            type,
-            price,
-            currency,
-            duration,
-            short_description: shortDesc,
-            description,
-            selar_product_id: selarProductId,
-            selar_product_url: selarProductUrl,
-            pdf_title: pdfTitle,
-            pdf_name: pdfName,
-            pdf_url: pdfUrl,
-            resources: resources,
-            is_active: isActive,
-            is_featured: isFeatured,
-            updated_at: new Date().toISOString()
-          };
-        }
-        return s;
-      });
-      setServices(updated);
-      store.services = updated;
-      store.addAuditLog('SERVICE_UPDATED', 'SERVICES', `Service ${name} updated with PDF fulfillment ${pdfName || 'materials'}`);
-      setEditingService(null);
+      const srvToUpdate: Service = {
+        ...editingService,
+        name,
+        slug,
+        type,
+        price,
+        currency,
+        duration,
+        short_description: shortDesc,
+        description,
+        selar_product_id: selarProductId,
+        selar_product_url: selarProductUrl,
+        pdf_title: pdfTitle,
+        pdf_name: pdfName,
+        pdf_url: pdfUrl,
+        resources: resources,
+        is_active: isActive,
+        is_featured: isFeatured,
+        updated_at: new Date().toISOString()
+      };
+
+      const saved = await saveService(srvToUpdate);
+      if (saved) {
+        setServices(services.map((s) => s.id === saved.id ? saved : s));
+        store.addAuditLog('SERVICE_UPDATED', 'SERVICES', `Service ${name} updated with PDF fulfillment ${pdfName || 'materials'}`);
+        setEditingService(null);
+      }
     } else if (isCreating) {
       // Create new
       const newSrv: Service = {
@@ -234,17 +245,28 @@ export default function AdminServicesPage() {
         is_featured: isFeatured,
         created_at: new Date().toISOString()
       };
-      setServices([...services, newSrv]);
-      store.services.push(newSrv);
-      store.addAuditLog('SERVICE_CREATED', 'SERVICES', `New service ${name} created with Selar ID ${selarProductId}`);
-      setIsCreating(false);
+      
+      const saved = await saveService(newSrv);
+      if (saved) {
+        setServices([...services, saved]);
+        store.addAuditLog('SERVICE_CREATED', 'SERVICES', `New service ${name} created with Selar ID ${selarProductId}`);
+        setIsCreating(false);
+      }
     }
+    
+    setIsUploading(false);
   };
 
-  const toggleActive = (id: string) => {
-    const updated = services.map((s) => (s.id === id ? { ...s, is_active: !s.is_active } : s));
-    setServices(updated);
-    store.services = updated;
+  const toggleActive = async (id: string) => {
+    const srv = services.find(s => s.id === id);
+    if (!srv) return;
+    
+    const updated = { ...srv, is_active: !srv.is_active };
+    const saved = await saveService(updated);
+    
+    if (saved) {
+      setServices(services.map((s) => (s.id === id ? saved : s)));
+    }
   };
 
   const handleSendTestPdfEmail = async (srv: Service) => {
@@ -293,6 +315,8 @@ export default function AdminServicesPage() {
             Configure coaching offerings, pricing in KES, attached PDF fulfillment materials, and associate each service with its Selar product.
           </p>
         </div>
+
+        {isLoading && <Loader2 className="w-6 h-6 animate-spin text-stone-400" />}
 
         <button
           onClick={startCreate}
@@ -360,77 +384,87 @@ export default function AdminServicesPage() {
       </div>
 
       {/* Services Table */}
-      <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-stone-100 flex items-center justify-between">
-          <h3 className="font-serif text-lg font-semibold text-stone-900">Service Offerings</h3>
-          <span className="text-xs text-stone-500 font-medium">{services.length} Services Active</span>
+      {isLoading ? (
+        <div className="py-12 flex justify-center text-stone-500">
+          Loading services...
         </div>
+      ) : services.length === 0 ? (
+        <div className="p-8 text-center bg-white rounded-2xl border border-stone-200">
+          <p className="text-stone-500">No services found. Create one to get started.</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-stone-100 flex items-center justify-between">
+            <h3 className="font-serif text-lg font-semibold text-stone-900">Service Offerings</h3>
+            <span className="text-xs text-stone-500 font-medium">{services.length} Services Active</span>
+          </div>
 
-        <div className="divide-y divide-stone-100">
-          {services.map((srv) => (
-            <div
-              key={srv.id}
-              className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:bg-stone-50/50 transition"
-            >
-              <div className="flex gap-4 items-start">
-                <img
-                  src={srv.image_url}
-                  alt={srv.name}
-                  className="w-16 h-16 rounded-xl object-cover border border-stone-200 shrink-0"
-                />
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-serif text-base font-semibold text-stone-900">{srv.name}</h4>
-                    {srv.is_featured && (
-                      <span className="text-[10px] uppercase font-bold text-rose-800 bg-rose-50 px-2 py-0.5 rounded">
-                        Featured
+          <div className="divide-y divide-stone-100">
+            {services.map((srv) => (
+              <div
+                key={srv.id}
+                className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:bg-stone-50/50 transition"
+              >
+                <div className="flex gap-4 items-start">
+                  <img
+                    src={srv.image_url}
+                    alt={srv.name}
+                    className="w-16 h-16 rounded-xl object-cover border border-stone-200 shrink-0"
+                  />
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-serif text-base font-semibold text-stone-900">{srv.name}</h4>
+                      {srv.is_featured && (
+                        <span className="text-[10px] uppercase font-bold text-rose-800 bg-rose-50 px-2 py-0.5 rounded">
+                          Featured
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-stone-500 line-clamp-1">{srv.short_description}</p>
+                    <div className="flex flex-wrap items-center gap-4 text-xs text-stone-600 pt-1">
+                      <span>Type: <code className="bg-stone-100 px-1.5 py-0.5 rounded font-mono text-stone-800">{srv.type}</code></span>
+                      <span>Duration: <strong>{srv.duration}</strong></span>
+                      <span>
+                        Selar Product ID: <code className="font-mono text-rose-900 font-semibold">{srv.selar_product_id || 'v09683c927'}</code>
                       </span>
-                    )}
+                    </div>
                   </div>
-                  <p className="text-xs text-stone-500 line-clamp-1">{srv.short_description}</p>
-                  <div className="flex flex-wrap items-center gap-4 text-xs text-stone-600 pt-1">
-                    <span>Type: <code className="bg-stone-100 px-1.5 py-0.5 rounded font-mono text-stone-800">{srv.type}</code></span>
-                    <span>Duration: <strong>{srv.duration}</strong></span>
-                    <span>
-                      Selar Product ID: <code className="font-mono text-rose-900 font-semibold">{srv.selar_product_id || 'v09683c927'}</code>
+                </div>
+
+                <div className="flex items-center gap-6 justify-between md:justify-end">
+                  <div className="text-right">
+                    <span className="text-xs text-stone-500 block">Pricing</span>
+                    <span className="font-serif text-lg font-bold text-stone-900">
+                      {srv.currency} {srv.price.toLocaleString()}
                     </span>
                   </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => toggleActive(srv.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
+                        srv.is_active
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-stone-100 text-stone-500 border-stone-200'
+                      }`}
+                    >
+                      {srv.is_active ? 'Active' : 'Disabled'}
+                    </button>
+
+                    <button
+                      onClick={() => startEdit(srv)}
+                      className="p-2 rounded-lg text-stone-600 hover:text-stone-900 hover:bg-stone-100 border border-stone-200"
+                      title="Edit Service & Selar Mapping"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
-
-              <div className="flex items-center gap-6 justify-between md:justify-end">
-                <div className="text-right">
-                  <span className="text-xs text-stone-500 block">Pricing</span>
-                  <span className="font-serif text-lg font-bold text-stone-900">
-                    {srv.currency} {srv.price.toLocaleString()}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => toggleActive(srv.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
-                      srv.is_active
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        : 'bg-stone-100 text-stone-500 border-stone-200'
-                    }`}
-                  >
-                    {srv.is_active ? 'Active' : 'Disabled'}
-                  </button>
-
-                  <button
-                    onClick={() => startEdit(srv)}
-                    className="p-2 rounded-lg text-stone-600 hover:text-stone-900 hover:bg-stone-100 border border-stone-200"
-                    title="Edit Service & Selar Mapping"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Edit / Create Modal */}
       {(editingService || isCreating) && (

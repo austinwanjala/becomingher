@@ -8,6 +8,7 @@
 import { store } from '@/lib/store';
 import { SHORT_DISCLAIMER } from '@/lib/disclaimer';
 import { ServiceResource } from '@/types';
+import { getServiceById } from '@/lib/services';
 
 export interface SendServicePdfEmailParams {
   customerEmail: string;
@@ -34,8 +35,8 @@ export interface EmailDeliveryResult {
  * Resolves the appropriate PDF asset for a given service.
  * Checks service-specific PDF attachments first, then falls back to programme companion book.
  */
-export function resolveServicePdf(serviceId: string): { url: string; name: string; title: string } | null {
-  const service = store.getServiceById(serviceId);
+export async function resolveServicePdf(serviceId: string): Promise<{ url: string; name: string; title: string } | null> {
+  const service = await getServiceById(serviceId);
   
   if (service?.pdf_url) {
     return {
@@ -219,7 +220,7 @@ export async function sendServicePdfEmail(params: SendServicePdfEmailParams): Pr
         name: params.pdfName || 'service-materials.pdf',
         title: params.pdfTitle || `${serviceTitle} Materials`
       }
-    : resolveServicePdf(serviceId);
+    : await resolveServicePdf(serviceId);
 
   const finalPdf = pdfAsset;
 

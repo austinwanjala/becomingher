@@ -14,9 +14,12 @@ import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { store } from '@/lib/store';
 import { ServiceDisclaimer } from '@/components/DisclaimerModal';
+import { getServiceBySlug } from '@/lib/services';
+import { notFound } from 'next/navigation';
 
-export default function InterpersonalCoachingPage() {
-  const service = store.getServiceBySlug('interpersonal-coaching') || store.services[2];
+export default async function InterpersonalCoachingPage() {
+  const service = await getServiceBySlug('interpersonal-coaching');
+  if (!service) return notFound();
   const coach = store.coach;
 
   return (

@@ -4,9 +4,12 @@ import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { store } from '@/lib/store';
 import { ServiceDisclaimer } from '@/components/DisclaimerModal';
+import { getServiceBySlug } from '@/lib/services';
+import { notFound } from 'next/navigation';
 
-export default function CustomCoachingPage() {
-  const service = store.getServiceBySlug('custom-coaching') || store.services[1];
+export default async function CustomCoachingPage() {
+  const service = await getServiceBySlug('custom-coaching');
+  if (!service) return notFound();
 
   const onboardingQuestions = [
     'What specific area of your life would you like support with right now?',

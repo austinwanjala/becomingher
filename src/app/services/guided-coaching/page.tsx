@@ -4,9 +4,13 @@ import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { store } from '@/lib/store';
 import { ServiceDisclaimer } from '@/components/DisclaimerModal';
+import { getServiceBySlug } from '@/lib/services';
+import { notFound } from 'next/navigation';
 
-export default function GuidedCoachingPage() {
-  const service = store.getServiceBySlug('guided-coaching') || store.services[0];
+export default async function GuidedCoachingPage() {
+  const service = await getServiceBySlug('guided-coaching');
+  if (!service) return notFound();
+  
   const programme = store.programme;
 
   return (

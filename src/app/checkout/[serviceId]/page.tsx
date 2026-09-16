@@ -22,11 +22,15 @@ import { Footer } from '@/components/Footer';
 import { store } from '@/lib/store';
 import { createClient } from '@/utils/supabase/client';
 import { DisclaimerModal } from '@/components/DisclaimerModal';
+import { getServiceById } from '@/lib/services';
+import { Service } from '@/types';
 
 export default function CheckoutPage({ params }: { params: Promise<{ serviceId: string }> }) {
   const router = useRouter();
   const resolvedParams = use(params);
-  const service = store.getServiceById(resolvedParams.serviceId);
+  
+  const [service, setService] = useState<Service | null>(null);
+  const [isServiceLoading, setIsServiceLoading] = useState(true);
 
   // Authentication state
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -61,7 +65,21 @@ export default function CheckoutPage({ params }: { params: Promise<{ serviceId: 
       }
       setAuthChecked(true);
     });
-  }, []);
+    
+    // Fetch service
+    getServiceById(resolvedParams.serviceId).then((data) => {
+      if (data) setService(data);
+      setIsServiceLoading(false);
+    });
+  }, [resolvedParams.serviceId]);
+
+  if (isServiceLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FAF8F5]">
+        <Loader2 className="w-8 h-8 animate-spin text-stone-400" />
+      </div>
+    );
+  }
 
   if (!service) {
     return (

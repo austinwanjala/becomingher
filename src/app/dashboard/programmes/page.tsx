@@ -21,13 +21,25 @@ import {
   BookMarked
 } from 'lucide-react';
 import { store } from '@/lib/store';
+import { getServiceById } from '@/lib/services';
+import { Service } from '@/types';
+import { useEffect } from 'react';
 
 export default function ProgrammesDashboardPage() {
   const customerId = 'cust-demo-01';
   const hasAccess = store.hasActiveEntitlement(customerId, 'srv-guided-01');
   const programme = store.programme;
   const book = programme.book;
-  const service = store.getServiceById('srv-guided-01');
+  
+  const [service, setService] = useState<Service | null>(null);
+  const [isServiceLoading, setIsServiceLoading] = useState(true);
+
+  useEffect(() => {
+    getServiceById('srv-guided-01').then((data) => {
+      if (data) setService(data);
+      setIsServiceLoading(false);
+    });
+  }, []);
 
   // Selected module & lesson state
   const [activeModuleId, setActiveModuleId] = useState(programme.modules[0].id);
@@ -67,7 +79,7 @@ export default function ProgrammesDashboardPage() {
     setSavedStatus((prev) => ({ ...prev, [questionId]: true }));
     setTimeout(() => {
       setSavedStatus((prev) => ({ ...prev, [questionId]: false }));
-    }, 3000);
+    }, 1000);
   };
 
   const toggleLessonCompleted = (lessonId: string) => {
@@ -80,6 +92,14 @@ export default function ProgrammesDashboardPage() {
   // =========================================================================
   // UNPAID / NOT ACQUIRED ACCESS ENFORCEMENT
   // =========================================================================
+  if (isServiceLoading) {
+    return (
+      <div className="min-h-screen bg-[#FAF8F5] pt-8 flex items-center justify-center">
+        <div className="animate-spin text-stone-400">Loading...</div>
+      </div>
+    );
+  }
+
   if (!hasAccess) {
     return (
       <div className="max-w-2xl mx-auto py-12 space-y-8">

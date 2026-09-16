@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sendServicePdfEmail } from '@/lib/email/delivery';
-import { store } from '@/lib/store';
+import { getServiceById } from '@/lib/services';
 
 export async function POST(request: Request) {
   try {
@@ -11,7 +11,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Customer email is required.' }, { status: 400 });
     }
 
-    const service = store.getServiceById(serviceId) || store.services[0];
+    const service = (await getServiceById(serviceId)) || { id: 'srv-guided-01', name: 'Default Service' };
 
     const result = await sendServicePdfEmail({
       customerEmail: customerEmail.trim(),
