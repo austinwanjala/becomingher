@@ -163,21 +163,6 @@ class Store {
     overview: 'Welcome to your sacred space of transformation. Over the next four modules, you will explore who you were, realign with who you are, and intentionally author the woman you are becoming.',
     image_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=800',
     is_published: true,
-    book: {
-      id: 'book-guided-01',
-      programme_id: 'prog-guided-01',
-      title: 'Becoming Her: The Sacred Companion Workbook & Reflective Manifesto',
-      author: 'Lead Coach Zipporah Karanja',
-      description: 'The official 142-page guided digital workbook and reflection companion designed exclusively for the Guided Digital Coaching Programme. Packed with structured weekly inquiries, somatic embodiment practices, habit architecture matrices, and transformative journaling frameworks.',
-      cover_image_url: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=800',
-      file_url: '/materials/becoming-her-companion-workbook.pdf',
-      file_name: 'becoming-her-companion-workbook.pdf',
-      file_size: '8.4 MB',
-      page_count: 142,
-      file_type: 'PDF',
-      uploaded_at: '2026-09-01T10:00:00Z',
-      is_published: true
-    },
     modules: [
       {
         id: 'mod-1',
