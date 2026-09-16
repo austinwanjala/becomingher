@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   BookOpen,
   Plus,
@@ -33,7 +33,6 @@ export default function AdminProgrammesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedModuleId, setSelectedModuleId] = useState<string>('');
   
-  import { useEffect } from 'react';
   
   useEffect(() => {
     getProgrammeById('prog-guided-01').then((data) => {
