@@ -9,7 +9,14 @@ export async function GET(
 ) {
   try {
     const { id: programmeId } = await params;
-    const programme = store.programme.id === programmeId ? store.programme : null;
+    
+    // 1. Fetch programme from Supabase
+    const supabase = await createClient();
+    const { data: programme } = await supabase
+      .from('programmes')
+      .select('*')
+      .eq('id', programmeId)
+      .single();
 
     if (!programme || !programme.book) {
       return NextResponse.json(
@@ -21,8 +28,7 @@ export async function GET(
     const book = programme.book;
     const download = request.nextUrl.searchParams.get('download') === '1';
 
-    // 1. Authenticate user
-    const supabase = await createClient();
+    // 2. Authenticate user
     const {
       data: { user },
     } = await supabase.auth.getUser();

@@ -26,10 +26,31 @@ import { store } from '@/lib/store';
 import { Programme, ProgrammeModule, ProgrammeLesson, ReflectionQuestion, ProgrammeBook } from '@/types';
 import { createClient } from '@/utils/supabase/client';
 
+import { getProgrammeById, saveProgramme } from '@/lib/programmes';
+
 export default function AdminProgrammesPage() {
-  const [programme, setProgramme] = useState<Programme>(store.programme);
-  const [selectedModuleId, setSelectedModuleId] = useState<string>(programme.modules[0]?.id || '');
-  const selectedModule = programme.modules.find((m) => m.id === selectedModuleId) || programme.modules[0];
+  const [programme, setProgramme] = useState<Programme | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedModuleId, setSelectedModuleId] = useState<string>('');
+  
+  import { useEffect } from 'react';
+  
+  useEffect(() => {
+    getProgrammeById('prog-guided-01').then((data) => {
+      if (data) {
+        setProgramme(data);
+        if (data.modules && data.modules.length > 0) {
+          setSelectedModuleId(data.modules[0].id);
+        }
+      } else {
+        // Fallback or create new if not found
+        console.warn('Programme not found in DB');
+      }
+      setIsLoading(false);
+    });
+  }, []);
+
+  const selectedModule = programme?.modules.find((m) => m.id === selectedModuleId) || programme?.modules[0];
 
   const [isEditingLesson, setIsEditingLesson] = useState<ProgrammeLesson | null>(null);
   const [lessonTitle, setLessonTitle] = useState('');
@@ -38,22 +59,35 @@ export default function AdminProgrammesPage() {
 
   const [newQuestionText, setNewQuestionText] = useState('');
 
-  // Accompanying Book Management State
   const [isEditingBook, setIsEditingBook] = useState(false);
-  const [bookTitle, setBookTitle] = useState(programme.book?.title || 'Becoming Her: The Sacred Companion Workbook & Reflective Manifesto');
-  const [bookAuthor, setBookAuthor] = useState(programme.book?.author || 'Lead Coach Zipporah Karanja');
+  const [bookTitle, setBookTitle] = useState('Becoming Her: The Sacred Companion Workbook & Reflective Manifesto');
+  const [bookAuthor, setBookAuthor] = useState('Lead Coach Zipporah Karanja');
   const [bookDescription, setBookDescription] = useState(
-    programme.book?.description ||
-      'A structured 142-page digital workbook containing weekly reflective frameworks, habit architecture matrices, and somatic journaling exercises accompanying the Guided Digital Programme.'
+    'A structured 142-page digital workbook containing weekly reflective frameworks, habit architecture matrices, and somatic journaling exercises accompanying the Guided Digital Programme.'
   );
-  const [bookPageCount, setBookPageCount] = useState<number>(programme.book?.page_count || 142);
+  const [bookPageCount, setBookPageCount] = useState<number>(142);
   const [bookCoverUrl, setBookCoverUrl] = useState(
-    programme.book?.cover_image_url || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=800'
+    'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=800'
   );
-  const [bookFileName, setBookFileName] = useState(programme.book?.file_name || 'becoming-her-companion-workbook.pdf');
-  const [bookFileSize, setBookFileSize] = useState(programme.book?.file_size || '8.4 MB');
-  const [bookFileType, setBookFileType] = useState(programme.book?.file_type || 'PDF');
-  const [bookFileUrl, setBookFileUrl] = useState(programme.book?.file_url || '/materials/becoming-her-companion-workbook.pdf');
+  const [bookFileName, setBookFileName] = useState('becoming-her-companion-workbook.pdf');
+  const [bookFileSize, setBookFileSize] = useState('8.4 MB');
+  const [bookFileType, setBookFileType] = useState('PDF');
+  const [bookFileUrl, setBookFileUrl] = useState('/materials/becoming-her-companion-workbook.pdf');
+  
+  useEffect(() => {
+    if (programme?.book) {
+      setBookTitle(programme.book.title);
+      setBookAuthor(programme.book.author || '');
+      setBookDescription(programme.book.description || '');
+      setBookPageCount(programme.book.page_count || 0);
+      setBookCoverUrl(programme.book.cover_image_url || '');
+      setBookFileName(programme.book.file_name);
+      setBookFileSize(programme.book.file_size || '');
+      setBookFileType(programme.book.file_type || 'PDF');
+      setBookFileUrl(programme.book.file_url);
+    }
+  }, [programme?.book]);
+
   const [bookNotification, setBookNotification] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -98,9 +132,13 @@ export default function AdminProgrammesPage() {
     }
   };
 
-  const handleSaveBook = (e: React.FormEvent) => {
+  const handleSaveBook = async (e: React.FormEvent) => {
     e.preventDefault();
-    const updatedBook = store.updateProgrammeBook(programme.id, {
+    if (!programme) return;
+
+    const updatedBook = {
+      id: programme.book?.id || `book-${Date.now()}`,
+      programme_id: programme.id,
       title: bookTitle,
       author: bookAuthor,
       description: bookDescription,
@@ -110,26 +148,34 @@ export default function AdminProgrammesPage() {
       file_size: bookFileSize,
       file_type: bookFileType,
       file_url: bookFileUrl,
-      is_published: true
-    });
+      is_published: true,
+      uploaded_at: programme.book?.uploaded_at || new Date().toISOString()
+    };
 
-    setProgramme({ ...programme, book: updatedBook });
+    const updatedProgramme = { ...programme, book: updatedBook };
+    setProgramme(updatedProgramme);
+    await saveProgramme(updatedProgramme);
+    
     setIsEditingBook(false);
     setBookNotification('Accompanying Programme Book saved & synced! Access is locked to paid members.');
     setTimeout(() => setBookNotification(null), 5000);
   };
 
-  const handleRemoveBook = () => {
+  const handleRemoveBook = async () => {
+    if (!programme) return;
     if (confirm('Are you sure you want to remove the accompanying book from this programme? Members will no longer be able to download it.')) {
-      store.removeProgrammeBook(programme.id);
-      setProgramme({ ...programme, book: null });
+      const updatedProgramme = { ...programme, book: null };
+      setProgramme(updatedProgramme);
+      await saveProgramme(updatedProgramme);
+      
       setIsEditingBook(false);
       setBookNotification('Accompanying book removed from programme.');
       setTimeout(() => setBookNotification(null), 5000);
     }
   };
 
-  const handleAddModule = () => {
+  const handleAddModule = async () => {
+    if (!programme) return;
     const newModNumber = programme.modules.length + 1;
     const newMod: ProgrammeModule = {
       id: `mod-${Date.now()}`,
@@ -158,14 +204,16 @@ export default function AdminProgrammesPage() {
     };
 
     const updatedModules = [...programme.modules, newMod];
-    setProgramme({ ...programme, modules: updatedModules });
-    store.programme.modules = updatedModules;
+    const updatedProgramme = { ...programme, modules: updatedModules };
+    
+    setProgramme(updatedProgramme);
     setSelectedModuleId(newMod.id);
+    await saveProgramme(updatedProgramme);
     store.addAuditLog('MODULE_CREATED', 'CURRICULUM', `New module created in ${programme.title}`);
   };
 
-  const handleAddReflectionQuestion = () => {
-    if (!newQuestionText.trim() || !selectedModule) return;
+  const handleAddReflectionQuestion = async () => {
+    if (!programme || !newQuestionText.trim() || !selectedModule) return;
     const newQ: ReflectionQuestion = {
       id: `ref-q-${Date.now()}`,
       question: newQuestionText.trim(),
@@ -178,8 +226,9 @@ export default function AdminProgrammesPage() {
       m.id === selectedModule.id ? { ...m, reflection_questions: updatedQuestions } : m
     );
 
-    setProgramme({ ...programme, modules: updatedModules });
-    store.programme.modules = updatedModules;
+    const updatedProgramme = { ...programme, modules: updatedModules };
+    setProgramme(updatedProgramme);
+    await saveProgramme(updatedProgramme);
     setNewQuestionText('');
     store.addAuditLog('REFLECTION_QUESTION_ADDED', 'CURRICULUM', `Question added to ${selectedModule.title}`);
   };
@@ -191,9 +240,9 @@ export default function AdminProgrammesPage() {
     setLessonContent(les.content);
   };
 
-  const saveLesson = (e: React.FormEvent) => {
+  const saveLesson = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isEditingLesson || !selectedModule) return;
+    if (!programme || !isEditingLesson || !selectedModule) return;
 
     const updatedLessons = selectedModule.lessons.map((l) =>
       l.id === isEditingLesson.id
@@ -205,11 +254,21 @@ export default function AdminProgrammesPage() {
       m.id === selectedModule.id ? { ...m, lessons: updatedLessons } : m
     );
 
-    setProgramme({ ...programme, modules: updatedModules });
-    store.programme.modules = updatedModules;
+    const updatedProgramme = { ...programme, modules: updatedModules };
+    setProgramme(updatedProgramme);
+    await saveProgramme(updatedProgramme);
+    
     setIsEditingLesson(null);
     store.addAuditLog('LESSON_UPDATED', 'CURRICULUM', `Lesson "${lessonTitle}" updated`);
   };
+
+  if (isLoading || !programme) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin text-stone-400">Loading curriculum...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

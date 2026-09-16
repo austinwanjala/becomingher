@@ -5,13 +5,15 @@ import { Footer } from '@/components/Footer';
 import { store } from '@/lib/store';
 import { ServiceDisclaimer } from '@/components/DisclaimerModal';
 import { getServiceBySlug } from '@/lib/services';
+import { getProgrammeByServiceId } from '@/lib/programmes';
 import { notFound } from 'next/navigation';
 
 export default async function GuidedCoachingPage() {
   const service = await getServiceBySlug('guided-coaching');
   if (!service) return notFound();
   
-  const programme = store.programme;
+  const programme = await getProgrammeByServiceId(service.id);
+  if (!programme) return notFound();
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF8F5] text-stone-900">

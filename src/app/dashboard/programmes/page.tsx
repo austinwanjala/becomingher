@@ -22,30 +22,44 @@ import {
 } from 'lucide-react';
 import { store } from '@/lib/store';
 import { getServiceById } from '@/lib/services';
-import { Service } from '@/types';
+import { getProgrammeByServiceId } from '@/lib/programmes';
+import { Service, Programme } from '@/types';
 import { useEffect } from 'react';
 
 export default function ProgrammesDashboardPage() {
   const customerId = 'cust-demo-01';
   const hasAccess = store.hasActiveEntitlement(customerId, 'srv-guided-01');
-  const programme = store.programme;
-  const book = programme.book;
   
+  const [programme, setProgramme] = useState<Programme | null>(null);
   const [service, setService] = useState<Service | null>(null);
-  const [isServiceLoading, setIsServiceLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Selected module & lesson state
+  const [activeModuleId, setActiveModuleId] = useState('');
+  const [activeLessonId, setActiveLessonId] = useState('');
 
   useEffect(() => {
-    getServiceById('srv-guided-01').then((data) => {
-      if (data) setService(data);
-      setIsServiceLoading(false);
+    Promise.all([
+      getServiceById('srv-guided-01'),
+      getProgrammeByServiceId('srv-guided-01')
+    ]).then(([svcData, progData]) => {
+      if (svcData) setService(svcData);
+      if (progData) {
+        setProgramme(progData);
+        if (progData.modules && progData.modules.length > 0) {
+          setActiveModuleId(progData.modules[0].id);
+          if (progData.modules[0].lessons && progData.modules[0].lessons.length > 0) {
+            setActiveLessonId(progData.modules[0].lessons[0].id);
+          }
+        }
+      }
+      setIsLoading(false);
     });
   }, []);
 
-  // Selected module & lesson state
-  const [activeModuleId, setActiveModuleId] = useState(programme.modules[0].id);
-  const activeModule = programme.modules.find((m) => m.id === activeModuleId) || programme.modules[0];
-  const [activeLessonId, setActiveLessonId] = useState(activeModule.lessons[0]?.id);
-  const activeLesson = activeModule.lessons.find((l) => l.id === activeLessonId) || activeModule.lessons[0];
+  const book = programme?.book;
+  const activeModule = programme?.modules.find((m) => m.id === activeModuleId) || programme?.modules[0];
+  const activeLesson = activeModule?.lessons.find((l) => l.id === activeLessonId) || activeModule?.lessons[0];
 
   // Book Reader Modal State
   const [isReadingBook, setIsReadingBook] = useState(false);
@@ -92,10 +106,18 @@ export default function ProgrammesDashboardPage() {
   // =========================================================================
   // UNPAID / NOT ACQUIRED ACCESS ENFORCEMENT
   // =========================================================================
-  if (isServiceLoading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-[#FAF8F5] pt-8 flex items-center justify-center">
         <div className="animate-spin text-stone-400">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!programme) {
+    return (
+      <div className="min-h-screen bg-[#FAF8F5] pt-8 flex items-center justify-center">
+        <div className="text-stone-500">Programme not found.</div>
       </div>
     );
   }
@@ -321,10 +343,7 @@ export default function ProgrammesDashboardPage() {
           return (
             <button
               key={mod.id}
-              onClick={() => {
-                setActiveModuleId(mod.id);
-                setActiveLessonId(mod.lessons[0]?.id);
-              }}
+              onClick={() => setActiveModuleId(mod.id)}
               className={`px-4 py-2.5 rounded-2xl text-xs font-semibold whitespace-nowrap transition ${
                 isSelected
                   ? 'bg-rose-950 text-amber-50 shadow-sm'
