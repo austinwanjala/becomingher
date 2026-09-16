@@ -29,25 +29,40 @@ import { createClient } from '@/utils/supabase/client';
 import { getProgrammeById, saveProgramme } from '@/lib/programmes';
 
 export default function AdminProgrammesPage() {
+  const [allProgrammes, setAllProgrammes] = useState<Programme[]>([]);
   const [programme, setProgramme] = useState<Programme | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedModuleId, setSelectedModuleId] = useState<string>('');
   
-  
   useEffect(() => {
-    getProgrammeById('prog-guided-01').then((data) => {
-      if (data) {
-        setProgramme(data);
-        if (data.modules && data.modules.length > 0) {
-          setSelectedModuleId(data.modules[0].id);
+    const fetchProgrammes = async () => {
+      const supabase = createClient();
+      const { data } = await supabase.from('programmes').select('*').order('created_at', { ascending: true });
+      if (data && data.length > 0) {
+        setAllProgrammes(data);
+        setProgramme(data[0]);
+        if (data[0].modules && data[0].modules.length > 0) {
+          setSelectedModuleId(data[0].modules[0].id);
         }
       } else {
-        // Fallback or create new if not found
-        console.warn('Programme not found in DB');
+        console.warn('No programmes found in DB');
       }
       setIsLoading(false);
-    });
+    };
+    fetchProgrammes();
   }, []);
+
+  const handleProgrammeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selected = allProgrammes.find(p => p.id === e.target.value);
+    if (selected) {
+      setProgramme(selected);
+      if (selected.modules && selected.modules.length > 0) {
+        setSelectedModuleId(selected.modules[0].id);
+      } else {
+        setSelectedModuleId('');
+      }
+    }
+  };
 
   const safeModules = programme?.modules || [];
   const selectedModule = safeModules.find((m) => m.id === selectedModuleId) || safeModules[0];
@@ -289,13 +304,24 @@ export default function AdminProgrammesPage() {
           </p>
         </div>
 
-        <button
-          onClick={handleAddModule}
-          className="px-5 py-2.5 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-rose-950 transition flex items-center gap-1.5 shadow shrink-0"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Add New Module</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <select 
+            className="px-4 py-2.5 rounded-xl border border-stone-200 bg-white text-xs font-medium text-stone-700 shadow-sm outline-none focus:border-rose-300 focus:ring-1 focus:ring-rose-300"
+            value={programme?.id || ''}
+            onChange={handleProgrammeChange}
+          >
+            {allProgrammes.map(p => (
+              <option key={p.id} value={p.id}>{p.title}</option>
+            ))}
+          </select>
+          <button
+            onClick={handleAddModule}
+            className="px-5 py-2.5 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-rose-950 transition flex items-center gap-1.5 shadow shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add New Module</span>
+          </button>
+        </div>
       </div>
 
       {/* Global Notification Banner */}
