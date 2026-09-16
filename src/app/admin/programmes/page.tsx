@@ -451,13 +451,13 @@ export default function AdminProgrammesPage() {
               </div>
 
               <a
-                href={`/api/programmes/${programme.id}/book?download=1`}
+                href={bookFileUrl || `/api/programmes/${programme.id}/book?download=1`}
                 target="_blank"
                 rel="noreferrer"
                 className="w-full px-3 py-2 rounded-xl bg-stone-900 text-amber-50 hover:bg-rose-950 transition flex items-center justify-center gap-1.5 font-semibold text-[11px] shadow-sm text-center"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>Test Download File</span>
+                <span>Preview / Download Book</span>
               </a>
 
               <button
