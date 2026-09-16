@@ -204,6 +204,10 @@ function buildServicePdfEmailHtml({
 export async function sendServicePdfEmail(params: SendServicePdfEmailParams): Promise<EmailDeliveryResult> {
   const { customerEmail, customerName, serviceId, serviceTitle, orderReference } = params;
 
+  // Fetch full service object to get latest resources from DB
+  const service = await getServiceById(serviceId);
+  const allResources = params.resources || service?.resources || [];
+
   // Resolve PDF asset for the service
   const pdfAsset = params.pdfUrl
     ? {
@@ -246,7 +250,7 @@ export async function sendServicePdfEmail(params: SendServicePdfEmailParams): Pr
     pdfTitle: finalPdf?.title,
     pdfName: finalPdf?.name,
     downloadUrl,
-    resources: params.resources || store.getServiceById(serviceId)?.resources || []
+    resources: allResources
   });
 
   // 1. If RESEND_API_KEY is available, dispatch via Resend REST API
@@ -270,7 +274,6 @@ export async function sendServicePdfEmail(params: SendServicePdfEmailParams): Pr
       }
 
       // Also attach additional resources if they are valid URLs
-      const allResources = params.resources || store.getServiceById(serviceId)?.resources || [];
       if (allResources.length > 0) {
         if (!emailPayload.attachments) emailPayload.attachments = [];
         allResources.forEach(res => {
