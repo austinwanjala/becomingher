@@ -237,7 +237,20 @@ export async function sendServicePdfEmail(params: SendServicePdfEmailParams): Pr
   // Ensure download URL is absolute if provided as relative path
   let downloadUrl = finalPdf.url;
   if (downloadUrl.startsWith('/')) {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://becomingher.co.ke';
+    let baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL || 'https://becomingher-five.vercel.app';
+    
+    // Fix common misconfiguration where NEXT_PUBLIC_APP_URL is left as localhost in production
+    if (baseUrl.includes('localhost') && process.env.VERCEL) {
+      baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL || 'becomingher-five.vercel.app';
+    }
+    
+    // Ensure protocol exists
+    if (!baseUrl.startsWith('http')) {
+      baseUrl = `https://${baseUrl}`;
+    }
+    
+    // Remove trailing slash if any
+    baseUrl = baseUrl.replace(/\/$/, '');
     downloadUrl = `${baseUrl}${downloadUrl}`;
   }
 
