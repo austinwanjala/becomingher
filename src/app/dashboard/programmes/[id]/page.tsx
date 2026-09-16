@@ -222,10 +222,10 @@ export default function ProgrammesDashboardPage() {
 
         <div className="text-center pt-2">
           <Link
-            href="/checkout/srv-guided-01"
+            href={`/checkout/${serviceId}`}
             className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-stone-900 text-amber-50 text-xs font-semibold hover:bg-rose-950 transition shadow-lg hover:shadow-xl group"
           >
-            <span>Unlock Guided Digital Programme & Book (KES 1,000)</span>
+            <span>Unlock {service?.name || programme.title} ({service?.currency || 'KES'} {service?.price || '1,000'})</span>
             <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition" />
           </Link>
         </div>

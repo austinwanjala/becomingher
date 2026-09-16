@@ -49,7 +49,8 @@ export default function AdminProgrammesPage() {
     });
   }, []);
 
-  const selectedModule = programme?.modules.find((m) => m.id === selectedModuleId) || programme?.modules[0];
+  const safeModules = programme?.modules || [];
+  const selectedModule = safeModules.find((m) => m.id === selectedModuleId) || safeModules[0];
 
   const [isEditingLesson, setIsEditingLesson] = useState<ProgrammeLesson | null>(null);
   const [lessonTitle, setLessonTitle] = useState('');
@@ -175,7 +176,8 @@ export default function AdminProgrammesPage() {
 
   const handleAddModule = async () => {
     if (!programme) return;
-    const newModNumber = programme.modules.length + 1;
+    const safeModules = programme.modules || [];
+    const newModNumber = safeModules.length + 1;
     const newMod: ProgrammeModule = {
       id: `mod-${Date.now()}`,
       programme_id: programme.id,
@@ -202,7 +204,7 @@ export default function AdminProgrammesPage() {
       ]
     };
 
-    const updatedModules = [...programme.modules, newMod];
+    const updatedModules = [...safeModules, newMod];
     const updatedProgramme = { ...programme, modules: updatedModules };
     
     setProgramme(updatedProgramme);
@@ -221,7 +223,8 @@ export default function AdminProgrammesPage() {
     };
 
     const updatedQuestions = [...selectedModule.reflection_questions, newQ];
-    const updatedModules = programme.modules.map((m) =>
+    const safeModules = programme.modules || [];
+    const updatedModules = safeModules.map((m) =>
       m.id === selectedModule.id ? { ...m, reflection_questions: updatedQuestions } : m
     );
 
@@ -249,7 +252,8 @@ export default function AdminProgrammesPage() {
         : l
     );
 
-    const updatedModules = programme.modules.map((m) =>
+    const safeModules = programme.modules || [];
+    const updatedModules = safeModules.map((m) =>
       m.id === selectedModule.id ? { ...m, lessons: updatedLessons } : m
     );
 
@@ -606,12 +610,12 @@ export default function AdminProgrammesPage() {
               <span>Programme Modules</span>
             </h3>
             <span className="text-xs text-stone-500">
-              {programme.modules.length} Stages
+              {(programme.modules || []).length} Stages
             </span>
           </div>
 
           <div className="space-y-2">
-            {programme.modules.map((mod, idx) => {
+            {(programme.modules || []).map((mod, idx) => {
               const isSelected = mod.id === selectedModule?.id;
               return (
                 <button

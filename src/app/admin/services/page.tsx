@@ -102,6 +102,38 @@ export default function AdminServicesPage() {
     }
   };
 
+  const handleQuestionnaireUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setUploadError(null);
+    try {
+      const supabase = createClient();
+      
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `questionnaires/${fileName}`;
+
+      const { error } = await supabase.storage
+        .from('materials')
+        .upload(filePath, file);
+
+      if (error) throw error;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('materials')
+        .getPublicUrl(filePath);
+
+      setQuestionnaireTemplateUrl(publicUrlData.publicUrl);
+    } catch (err: any) {
+      console.error('Upload failed:', err);
+      setUploadError(err.message || 'Failed to upload questionnaire');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleResourceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -213,6 +245,7 @@ export default function AdminServicesPage() {
         pdf_name: pdfName,
         pdf_url: pdfUrl,
         resources: resources,
+        questionnaire_template_url: questionnaireTemplateUrl,
         is_active: isActive,
         is_featured: isFeatured,
         updated_at: new Date().toISOString()
@@ -244,6 +277,7 @@ export default function AdminServicesPage() {
         pdf_name: pdfName,
         pdf_url: pdfUrl,
         resources: resources,
+        questionnaire_template_url: questionnaireTemplateUrl,
         is_active: isActive,
         is_featured: isFeatured,
         created_at: new Date().toISOString()
@@ -713,6 +747,44 @@ export default function AdminServicesPage() {
                     </div>
                   )}
                 </div>
+
+                {/* Questionnaire Upload for Custom Coaching */}
+                {type === 'CUSTOM_COACHING' && (
+                  <div className="sm:col-span-2 p-4 bg-blue-50/70 rounded-2xl border border-blue-200/90 space-y-4 mt-2">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-blue-600" />
+                      <h4 className="font-serif font-semibold text-stone-900 text-sm">
+                        Pre-Consultation Questionnaire
+                      </h4>
+                    </div>
+                    <p className="text-xs text-stone-600">
+                      Upload the Word document (.docx) questionnaire that customers must fill out and upload during this customized programme.
+                    </p>
+
+                    <div className="p-4 border border-blue-200 bg-white rounded-xl space-y-3">
+                      <label className="font-medium text-stone-700 text-xs block">Upload Questionnaire Template</label>
+                      <input 
+                        type="file" 
+                        accept=".doc,.docx,.pdf"
+                        onChange={handleQuestionnaireUpload}
+                        disabled={isUploading}
+                        className="text-xs file:mr-4 file:py-1.5 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-100 file:text-blue-800 hover:file:bg-blue-200 cursor-pointer"
+                      />
+                      {isUploading && <p className="text-blue-600 flex items-center gap-2 text-xs mt-2"><Loader2 className="w-3 h-3 animate-spin" /> Uploading...</p>}
+                      
+                      <div className="space-y-1 mt-3">
+                        <label className="font-medium text-stone-700 text-xs">Questionnaire Download URL</label>
+                        <input
+                          type="text"
+                          value={questionnaireTemplateUrl}
+                          onChange={(e) => setQuestionnaireTemplateUrl(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono text-xs bg-white"
+                          placeholder="Uploaded URL will appear here"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {type !== 'DIGITAL_PRODUCT' && (
                   <>
