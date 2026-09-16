@@ -22,6 +22,7 @@ CREATE TABLE public.services (
     pdf_name TEXT,
     pdf_url TEXT,
     resources JSONB NOT NULL DEFAULT '[]'::jsonb,
+    questionnaire_template_url TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE
 );

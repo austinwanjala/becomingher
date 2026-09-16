@@ -20,6 +20,12 @@ export interface SendServicePdfEmailParams {
   pdfName?: string;
   pdfTitle?: string;
   resources?: ServiceResource[];
+  booking?: {
+    scheduledDate: string;
+    startTime: string;
+    meetingLink: string;
+    coachName?: string;
+  };
 }
 
 export interface EmailDeliveryResult {
@@ -59,7 +65,8 @@ function buildServicePdfEmailHtml({
   pdfTitle,
   pdfName,
   downloadUrl,
-  resources
+  resources,
+  booking
 }: {
   customerName: string;
   serviceTitle: string;
@@ -68,6 +75,12 @@ function buildServicePdfEmailHtml({
   pdfName?: string;
   downloadUrl?: string;
   resources?: ServiceResource[];
+  booking?: {
+    scheduledDate: string;
+    startTime: string;
+    meetingLink: string;
+    coachName?: string;
+  };
 }) {
   const brandName = store.brand?.name || 'Becoming Her';
   const currentYear = new Date().getFullYear();
@@ -108,6 +121,33 @@ function buildServicePdfEmailHtml({
               <p style="margin: 0 0 20px; font-size: 14px; color: #44403c; line-height: 1.7;">
                 Thank you for honoring yourself and taking this deliberate step forward. Your order for <strong>${serviceTitle}</strong> has been successfully confirmed (Order Reference: <strong style="font-family: monospace; color: #1c1917;">${orderReference}</strong>).
               </p>
+
+              ${booking ? `
+              <div style="background-color: #fce7f3; border: 1px solid #fbcfe8; border-radius: 8px; padding: 24px; margin: 30px 0;">
+                <h3 style="margin-top: 0; margin-bottom: 15px; color: #831843; font-size: 18px; font-weight: 600;">Your Upcoming Session</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; border-bottom: 1px solid #fbcfe8; color: #831843; font-weight: 500; width: 120px;">Date & Time</td>
+                    <td style="padding: 8px 0; border-bottom: 1px solid #fbcfe8; color: #4c0519;">${booking.scheduledDate} at ${booking.startTime}</td>
+                  </tr>
+                  ${booking.coachName ? `
+                  <tr>
+                    <td style="padding: 8px 0; border-bottom: 1px solid #fbcfe8; color: #831843; font-weight: 500;">Coach</td>
+                    <td style="padding: 8px 0; border-bottom: 1px solid #fbcfe8; color: #4c0519;">${booking.coachName}</td>
+                  </tr>
+                  ` : ''}
+                  <tr>
+                    <td style="padding: 8px 0; color: #831843; font-weight: 500;">Meeting Link</td>
+                    <td style="padding: 8px 0;">
+                      <a href="${booking.meetingLink}" style="color: #9f1239; text-decoration: underline;">Join Video Call</a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin-top: 15px; margin-bottom: 0; font-size: 13px; color: #831843; opacity: 0.8;">
+                  Please ensure you are in a quiet, private space at the time of our session.
+                </p>
+              </div>
+              ` : ''}
 
               ${downloadUrl ? `
               <!-- PDF Resource Delivery Card -->
@@ -250,7 +290,8 @@ export async function sendServicePdfEmail(params: SendServicePdfEmailParams): Pr
     pdfTitle: finalPdf?.title,
     pdfName: finalPdf?.name,
     downloadUrl,
-    resources: allResources
+    resources: allResources,
+    booking: params.booking
   });
 
   // 1. If RESEND_API_KEY is available, dispatch via Resend REST API

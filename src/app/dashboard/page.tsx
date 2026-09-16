@@ -152,7 +152,7 @@ export default function DashboardOverviewPage() {
                         <p className="text-xs text-stone-500">Curriculum Unlocked</p>
                       </div>
                       <Link
-                        href="/dashboard/programmes"
+                        href={`/dashboard/programmes/${entitlement.service_id}`}
                         className="px-5 py-2.5 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-rose-950 transition shrink-0 flex items-center justify-center gap-2 shadow"
                       >
                         <span>Resume Learning</span>

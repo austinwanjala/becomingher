@@ -1,48 +1,29 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Users, Search, BookOpen, Calendar, CreditCard, ShieldCheck } from 'lucide-react';
 import { store } from '@/lib/store';
 
 export default function AdminCustomersPage() {
   const [search, setSearch] = useState('');
 
-  // Roster of customers
-  const customers = [
-    {
-      id: 'cust-demo-01',
-      name: 'Grace Mwangi',
-      email: 'grace@example.com',
-      phone: '+254 712 345 678',
-      role: 'CUSTOMER',
-      programmes: ['Guided Digital Coaching Programme'],
-      sessions: 1,
-      totalSpent: 1000,
-      joined: '2026-09-01'
-    },
-    {
-      id: 'cust-demo-02',
-      name: 'Dr. Sarah K.',
-      email: 'sarah.k@example.com',
-      phone: '+254 722 987 654',
-      role: 'CUSTOMER',
-      programmes: ['Customized Digital Coaching'],
-      sessions: 0,
-      totalSpent: 1500,
-      joined: '2026-09-05'
-    },
-    {
-      id: 'cust-demo-03',
-      name: 'Wanjiku N.',
-      email: 'wanjiku@example.com',
-      phone: '+254 733 456 789',
-      role: 'CUSTOMER',
-      programmes: ['Interpersonal Coaching Session'],
-      sessions: 2,
-      totalSpent: 5000,
-      joined: '2026-08-20'
-    }
-  ];
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/admin/customers')
+      .then(res => res.json())
+      .then(data => {
+        if (data.customers) setCustomers(data.customers);
+        if (data.error) setError(data.error);
+        setIsLoading(false);
+      })
+      .catch(err => {
+        setError(err.message);
+        setIsLoading(false);
+      });
+  }, []);
 
   const filtered = customers.filter(
     (c) =>
@@ -75,8 +56,14 @@ export default function AdminCustomersPage() {
       <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-stone-100 flex items-center justify-between">
           <h3 className="font-serif text-lg font-semibold text-stone-900">Registered Members</h3>
-          <span className="text-xs text-stone-500">{filtered.length} Customers</span>
+          <span className="text-xs text-stone-500">{isLoading ? 'Loading...' : `${filtered.length} Customers`}</span>
         </div>
+
+        {error && (
+          <div className="p-4 bg-rose-50 text-rose-800 text-xs text-center border-b border-rose-100">
+            Error loading customers: {error}
+          </div>
+        )}
 
         <div className="divide-y divide-stone-100 text-xs text-stone-700">
           {filtered.map((c) => (
@@ -93,9 +80,25 @@ export default function AdminCustomersPage() {
                 </div>
                 <p className="text-stone-500">{c.email} • {c.phone}</p>
                 <div className="flex flex-wrap items-center gap-3 text-[11px] text-stone-600 pt-1">
-                  <span>Enrolled: <strong>{c.programmes.join(', ')}</strong></span>
+                  <span>Enrolled: <strong>{c.programmes?.join(', ') || 'None'}</strong></span>
                   <span>1-on-1 Sessions: <strong>{c.sessions}</strong></span>
                 </div>
+                {c.questionnaires && c.questionnaires.length > 0 && (
+                  <div className="pt-2 flex flex-wrap gap-2">
+                    {c.questionnaires.map((q: any, i: number) => (
+                      <a
+                        key={i}
+                        href={q.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-50 text-green-700 font-semibold border border-green-200 hover:bg-green-100 transition shadow-sm"
+                      >
+                        <BookOpen className="w-3.5 h-3.5" />
+                        <span>Filled Questionnaire ({q.service})</span>
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="text-right">

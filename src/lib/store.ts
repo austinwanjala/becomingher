@@ -728,9 +728,12 @@ class Store {
     return booking;
   }
 
-  public confirmBookingPayment(bookingId: string, orderId: string): Booking {
+  public confirmBookingPayment(bookingId: string, orderId: string): Booking | undefined {
     const booking = this.bookings.find((b) => b.id === bookingId);
-    if (!booking) throw new Error('Booking not found');
+    if (!booking) {
+      console.warn(`Mock booking ${bookingId} not found. Ignoring for simulation.`);
+      return undefined;
+    }
 
     booking.payment_status = 'SUCCESSFUL';
     booking.booking_status = 'CONFIRMED';

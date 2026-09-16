@@ -61,6 +61,7 @@ export interface Service {
   pdf_name?: string;
   pdf_title?: string;
   resources?: ServiceResource[];
+  questionnaire_template_url?: string;
   created_at: string;
   updated_at?: string;
 }
@@ -103,9 +104,10 @@ export interface Entitlement {
   service_id: string;
   service_name: string;
   service_type: ServiceType;
-  order_id: string;
-  status: EntitlementStatus;
+  order_id?: string;
+  status: 'ACTIVE' | 'EXPIRED' | 'COMPLETED' | 'CANCELLED';
   progress_percentage: number;
+  questionnaire_url?: string;
   start_date: string;
   expires_at?: string;
   completed_at?: string;

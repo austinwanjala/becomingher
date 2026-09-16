@@ -45,6 +45,7 @@ export default function AdminServicesPage() {
   const [pdfName, setPdfName] = useState('');
   const [pdfUrl, setPdfUrl] = useState('');
   const [resources, setResources] = useState<ServiceResource[]>([]);
+  const [questionnaireTemplateUrl, setQuestionnaireTemplateUrl] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [isFeatured, setIsFeatured] = useState(false);
 
@@ -162,6 +163,7 @@ export default function AdminServicesPage() {
     setPdfName(srv.pdf_name || '');
     setPdfUrl(srv.pdf_url || '');
     setResources(srv.resources || []);
+    setQuestionnaireTemplateUrl(srv.questionnaire_template_url || '');
     setIsActive(srv.is_active);
     setIsFeatured(srv.is_featured);
     setIsCreating(false);
@@ -183,6 +185,7 @@ export default function AdminServicesPage() {
     setPdfName('');
     setPdfUrl('');
     setResources([]);
+    setQuestionnaireTemplateUrl('');
     setIsActive(true);
     setIsFeatured(false);
     setIsCreating(true);

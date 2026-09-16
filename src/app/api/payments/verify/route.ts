@@ -43,18 +43,22 @@ export async function POST(request: Request) {
         .limit(1);
       
       const entitlement = existingEntitlements?.[0];
-      const booking = order.metadata?.bookingId
-        ? store.bookings.find((b) => b.id === order.metadata?.bookingId)
-        : undefined;
 
-      return NextResponse.json({
-        verified: true,
-        alreadyProcessed: true,
-        order,
-        entitlement,
-        booking,
-        message: 'Payment is already confirmed and active.'
-      });
+      // If order is successful but no entitlement exists, do NOT return early! Let it fall through to create it.
+      if (entitlement) {
+        const booking = order.metadata?.bookingId
+          ? store.bookings.find((b) => b.id === order.metadata?.bookingId)
+          : undefined;
+
+        return NextResponse.json({
+          verified: true,
+          alreadyProcessed: true,
+          order,
+          entitlement,
+          booking,
+          message: 'Payment is already confirmed and active.'
+        });
+      }
     }
 
     // Verify through Selar Provider
@@ -95,7 +99,7 @@ export async function POST(request: Request) {
         entitlement = updatedData?.[0];
       } else {
         // Insert new entitlement
-        const { data: newData } = await supabase
+        const { data: newData, error: insertError } = await supabase
           .from('entitlements')
           .insert({
             customer_id: order.customer_id,
@@ -107,6 +111,10 @@ export async function POST(request: Request) {
             progress_percentage: 0
           })
           .select();
+        
+        if (insertError) {
+          console.error("FAILED TO INSERT ENTITLEMENT:", insertError);
+        }
         entitlement = newData?.[0];
       }
 
@@ -138,7 +146,15 @@ export async function POST(request: Request) {
           customerName: order.customer_name,
           serviceId: order.service_id,
           serviceTitle: order.service_name,
-          orderReference: order.order_reference
+          orderReference: order.order_reference,
+          ...(confirmedBooking ? {
+            booking: {
+              scheduledDate: confirmedBooking.scheduled_date,
+              startTime: confirmedBooking.start_time,
+              meetingLink: confirmedBooking.meeting_link || '',
+              coachName: confirmedBooking.coach_name
+            }
+          } : {})
         })
       ]);
 
