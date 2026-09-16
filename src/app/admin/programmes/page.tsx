@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { store } from '@/lib/store';
 import { Programme, ProgrammeModule, ProgrammeLesson, ReflectionQuestion, ProgrammeBook } from '@/types';
+import { createClient } from '@/utils/supabase/client';
 
 export default function AdminProgrammesPage() {
   const [programme, setProgramme] = useState<Programme>(store.programme);
@@ -56,27 +57,45 @@ export default function AdminProgrammesPage() {
   const [bookNotification, setBookNotification] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileUpload = (file: File) => {
-    const sizeInMb = (file.size / (1024 * 1024)).toFixed(1);
-    const sizeStr = `${sizeInMb} MB`;
-    const extension = file.name.split('.').pop()?.toUpperCase() || 'PDF';
+  const [isUploading, setIsUploading] = useState(false);
 
-    setBookFileName(file.name);
-    setBookFileSize(sizeStr);
-    setBookFileType(extension);
+  const handleFileUpload = async (file: File) => {
+    setIsUploading(true);
+    setBookNotification('Uploading file to storage...');
 
-    // Read as Data URL or local object URL so it's immediately test-downloadable
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = e.target?.result as string;
-      if (result) {
-        setBookFileUrl(result);
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const sizeInMb = (file.size / (1024 * 1024)).toFixed(1);
+      const sizeStr = `${sizeInMb} MB`;
+      const extension = file.name.split('.').pop()?.toUpperCase() || 'PDF';
 
-    setBookNotification(`File "${file.name}" (${sizeStr}) uploaded successfully. Click "Save Book Details" below.`);
-    setTimeout(() => setBookNotification(null), 5000);
+      setBookFileName(file.name);
+      setBookFileSize(sizeStr);
+      setBookFileType(extension);
+
+      const supabase = createClient();
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `products/${fileName}`;
+
+      const { error } = await supabase.storage
+        .from('materials')
+        .upload(filePath, file);
+
+      if (error) throw error;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('materials')
+        .getPublicUrl(filePath);
+
+      setBookFileUrl(publicUrlData.publicUrl);
+      setBookNotification(`File "${file.name}" (${sizeStr}) uploaded successfully. Click "Save Book Details" below.`);
+    } catch (err: any) {
+      console.error('Upload failed:', err);
+      setBookNotification(`Upload failed: ${err.message}`);
+    } finally {
+      setIsUploading(false);
+      setTimeout(() => setBookNotification(null), 5000);
+    }
   };
 
   const handleSaveBook = (e: React.FormEvent) => {

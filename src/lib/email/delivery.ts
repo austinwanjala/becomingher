@@ -46,15 +46,6 @@ export async function resolveServicePdf(serviceId: string): Promise<{ url: strin
     };
   }
 
-  // Fallback to Programme Book if it's the digital programme or has an active book
-  if (store.programme?.book?.file_url) {
-    return {
-      url: store.programme.book.file_url,
-      name: store.programme.book.file_name || 'becoming-her-companion-workbook.pdf',
-      title: store.programme.book.title || 'Becoming Her Sacred Companion Workbook'
-    };
-  }
-
   return null;
 }
 

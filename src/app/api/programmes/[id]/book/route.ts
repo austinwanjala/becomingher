@@ -107,9 +107,13 @@ export async function GET(
     }
 
     // 5. Serve the book file or generated workbook document
-    // If the book file_url is an external URL, redirect securely
-    if (book.file_url.startsWith('http://') || book.file_url.startsWith('https://')) {
-      return NextResponse.redirect(book.file_url);
+    // If the book file_url is a URL or relative path, redirect to it
+    if (book.file_url && (book.file_url.startsWith('http://') || book.file_url.startsWith('https://') || book.file_url.startsWith('/'))) {
+      return NextResponse.redirect(
+        book.file_url.startsWith('/') 
+          ? new URL(book.file_url, request.url) 
+          : book.file_url
+      );
     }
 
     // Generate a dedicated formatted text/PDF stream for the companion workbook
