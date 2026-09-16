@@ -21,12 +21,20 @@ import { createClient } from '@/utils/supabase/client';
 
 export default function DashboardOverviewPage() {
   const [user, setUser] = useState<any>(null);
+  const [entitlements, setEntitlements] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       setUser(user);
+      if (user) {
+        const { data } = await supabase
+          .from('entitlements')
+          .select('*')
+          .eq('customer_id', user.id);
+        if (data) setEntitlements(data);
+      }
       setIsLoading(false);
     });
   }, []);
@@ -34,8 +42,6 @@ export default function DashboardOverviewPage() {
   const customerId = user ? user.id : 'cust-demo-01';
   const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Grace Mwangi';
 
-  // Retrieve data for this customer, falling back gracefully to demo seed if brand new
-  let entitlements = store.getEntitlements(customerId);
   let bookings = store.bookings.filter((b) => b.customer_id === customerId);
   let orders = store.orders.filter((o) => o.customer_id === customerId);
   let goals = store.goals.filter((g) => g.user_id === customerId);
@@ -49,7 +55,7 @@ export default function DashboardOverviewPage() {
     }
   }
 
-  const activeEntitlement = entitlements.find((e) => e.status === 'ACTIVE');
+  const activeEntitlements = entitlements.filter((e) => e.status === 'ACTIVE');
   const upcomingBooking = bookings.find((b) => b.booking_status === 'CONFIRMED');
 
   return (
@@ -131,40 +137,44 @@ export default function DashboardOverviewPage() {
               </Link>
             </div>
 
-            {activeEntitlement ? (
+            {activeEntitlements.length > 0 ? (
               <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-[#FAF8F5] border border-stone-200/80">
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-semibold text-rose-900 uppercase tracking-widest bg-rose-100/70 px-2 py-0.5 rounded">
-                      In Progress
-                    </span>
-                    <h4 className="font-serif text-lg font-semibold text-stone-900">
-                      {activeEntitlement.service_name}
-                    </h4>
-                    <p className="text-xs text-stone-500">Module 1: The Awakening & Unlearning</p>
-                  </div>
-                  <Link
-                    href="/dashboard/programmes"
-                    className="px-5 py-2.5 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-rose-950 transition shrink-0 flex items-center justify-center gap-2 shadow"
-                  >
-                    <span>Resume Learning</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
+                {activeEntitlements.map((entitlement) => (
+                  <div key={entitlement.id} className="space-y-4 border-b border-stone-100 pb-4 last:border-0 last:pb-0">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-[#FAF8F5] border border-stone-200/80">
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-semibold text-rose-900 uppercase tracking-widest bg-rose-100/70 px-2 py-0.5 rounded">
+                          In Progress
+                        </span>
+                        <h4 className="font-serif text-lg font-semibold text-stone-900">
+                          {entitlement.service_name}
+                        </h4>
+                        <p className="text-xs text-stone-500">Curriculum Unlocked</p>
+                      </div>
+                      <Link
+                        href="/dashboard/programmes"
+                        className="px-5 py-2.5 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-rose-950 transition shrink-0 flex items-center justify-center gap-2 shadow"
+                      >
+                        <span>Resume Learning</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    </div>
 
-                {/* Progress Bar */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs text-stone-600 font-medium">
-                    <span>Journey Completion</span>
-                    <span>{activeEntitlement.progress_percentage}%</span>
+                    {/* Progress Bar */}
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-xs text-stone-600 font-medium">
+                        <span>Journey Completion</span>
+                        <span>{entitlement.progress_percentage}%</span>
+                      </div>
+                      <div className="w-full h-2 bg-stone-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-rose-900 rounded-full transition-all duration-500"
+                          style={{ width: `${entitlement.progress_percentage}%` }}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="w-full h-2 bg-stone-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-rose-900 rounded-full transition-all duration-500"
-                      style={{ width: `${activeEntitlement.progress_percentage}%` }}
-                    />
-                  </div>
-                </div>
+                ))}
               </div>
             ) : (
               <div className="p-6 rounded-2xl bg-[#FAF8F5] border border-stone-200/80 space-y-4 text-center sm:text-left">

@@ -36,7 +36,13 @@ export async function POST(request: Request) {
 
     // IDEMPOTENCY: If already successful, return the current confirmed state immediately
     if (order.payment_status === 'SUCCESSFUL') {
-      const entitlement = store.entitlements.find((e) => e.order_id === order.id);
+      const { data: existingEntitlements } = await supabase
+        .from('entitlements')
+        .select('*')
+        .eq('order_id', order.id)
+        .limit(1);
+      
+      const entitlement = existingEntitlements?.[0];
       const booking = order.metadata?.bookingId
         ? store.bookings.find((b) => b.id === order.metadata?.bookingId)
         : undefined;
@@ -65,8 +71,44 @@ export async function POST(request: Request) {
         updated_at: order.updated_at
       }).eq('id', order.id);
 
-      // Create or activate entitlement
-      const entitlement = store.unlockEntitlement(order.customer_id, order.service_id, order.id);
+      // Create or activate entitlement in Supabase
+      const { data: existingEntitlement } = await supabase
+        .from('entitlements')
+        .select('*')
+        .eq('customer_id', order.customer_id)
+        .eq('service_id', order.service_id)
+        .limit(1);
+
+      let entitlement;
+
+      if (existingEntitlement && existingEntitlement.length > 0) {
+        // Update existing entitlement
+        const { data: updatedData } = await supabase
+          .from('entitlements')
+          .update({
+            status: 'ACTIVE',
+            order_id: order.id,
+            start_date: new Date().toISOString()
+          })
+          .eq('id', existingEntitlement[0].id)
+          .select();
+        entitlement = updatedData?.[0];
+      } else {
+        // Insert new entitlement
+        const { data: newData } = await supabase
+          .from('entitlements')
+          .insert({
+            customer_id: order.customer_id,
+            service_id: order.service_id,
+            service_name: order.service_name || 'Becoming Her Service',
+            service_type: order.metadata?.serviceType || 'DIGITAL_PROGRAMME',
+            order_id: order.id,
+            status: 'ACTIVE',
+            progress_percentage: 0
+          })
+          .select();
+        entitlement = newData?.[0];
+      }
 
       // If interpersonal coaching session, confirm booking and generate meeting link
       let confirmedBooking;

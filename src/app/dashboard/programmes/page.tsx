@@ -25,10 +25,11 @@ import { getServiceById } from '@/lib/services';
 import { getProgrammeByServiceId } from '@/lib/programmes';
 import { Service, Programme } from '@/types';
 import { useEffect } from 'react';
+import { createClient } from '@/utils/supabase/client';
 
 export default function ProgrammesDashboardPage() {
-  const customerId = 'cust-demo-01';
-  const hasAccess = store.hasActiveEntitlement(customerId, 'srv-guided-01');
+  const [hasAccess, setHasAccess] = useState(false);
+  const [user, setUser] = useState<any>(null);
   
   const [programme, setProgramme] = useState<Programme | null>(null);
   const [service, setService] = useState<Service | null>(null);
@@ -39,21 +40,31 @@ export default function ProgrammesDashboardPage() {
   const [activeLessonId, setActiveLessonId] = useState('');
 
   useEffect(() => {
-    Promise.all([
-      getServiceById('srv-guided-01'),
-      getProgrammeByServiceId('srv-guided-01')
-    ]).then(([svcData, progData]) => {
-      if (svcData) setService(svcData);
-      if (progData) {
-        setProgramme(progData);
-        if (progData.modules && progData.modules.length > 0) {
-          setActiveModuleId(progData.modules[0].id);
-          if (progData.modules[0].lessons && progData.modules[0].lessons.length > 0) {
-            setActiveLessonId(progData.modules[0].lessons[0].id);
+    const supabase = createClient();
+    
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user);
+      
+      Promise.all([
+        getServiceById('srv-guided-01'),
+        getProgrammeByServiceId('srv-guided-01'),
+        user ? supabase.from('entitlements').select('*').eq('customer_id', user.id).eq('service_id', 'srv-guided-01').eq('status', 'ACTIVE') : Promise.resolve({ data: null })
+      ]).then(([svcData, progData, entData]) => {
+        if (svcData) setService(svcData);
+        if (progData) {
+          setProgramme(progData);
+          if (progData.modules && progData.modules.length > 0) {
+            setActiveModuleId(progData.modules[0].id);
+            if (progData.modules[0].lessons && progData.modules[0].lessons.length > 0) {
+              setActiveLessonId(progData.modules[0].lessons[0].id);
+            }
           }
         }
-      }
-      setIsLoading(false);
+        if (entData && entData.data && entData.data.length > 0) {
+          setHasAccess(true);
+        }
+        setIsLoading(false);
+      });
     });
   }, []);
 
