@@ -199,7 +199,7 @@ export default function ProgrammesDashboardPage() {
 
     store.reflections.unshift({
       id: `ref-${Date.now()}`,
-      user_id: customerId,
+      user_id: user?.id || 'cust-demo-01',
       programme_id: programme.id,
       module_id: activeModule.id,
       question_id: questionId,
