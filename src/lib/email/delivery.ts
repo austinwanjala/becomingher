@@ -54,12 +54,7 @@ export function resolveServicePdf(serviceId: string): { url: string; name: strin
     };
   }
 
-  // Default platform fallback workbook
-  return {
-    url: '/materials/becoming-her-companion-workbook.pdf',
-    name: 'becoming-her-companion-workbook.pdf',
-    title: 'Becoming Her Sacred Companion Workbook & Reflective Manifesto'
-  };
+  return null;
 }
 
 /**
@@ -77,9 +72,9 @@ function buildServicePdfEmailHtml({
   customerName: string;
   serviceTitle: string;
   orderReference: string;
-  pdfTitle: string;
-  pdfName: string;
-  downloadUrl: string;
+  pdfTitle?: string;
+  pdfName?: string;
+  downloadUrl?: string;
   resources?: ServiceResource[];
 }) {
   const brandName = store.brand?.name || 'Becoming Her';
@@ -122,6 +117,7 @@ function buildServicePdfEmailHtml({
                 Thank you for honoring yourself and taking this deliberate step forward. Your order for <strong>${serviceTitle}</strong> has been successfully confirmed (Order Reference: <strong style="font-family: monospace; color: #1c1917;">${orderReference}</strong>).
               </p>
 
+              ${downloadUrl ? `
               <!-- PDF Resource Delivery Card -->
               <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #FAF8F5; border: 1px solid #e7e5e4; border-radius: 16px; margin: 24px 0; padding: 20px;">
                 <tr>
@@ -142,6 +138,7 @@ function buildServicePdfEmailHtml({
                   </td>
                 </tr>
               </table>
+              ` : ''}
 
               ${resources && resources.length > 0 ? `
               <!-- Additional Resources -->
@@ -224,19 +221,15 @@ export async function sendServicePdfEmail(params: SendServicePdfEmailParams): Pr
       }
     : resolveServicePdf(serviceId);
 
-  const finalPdf = pdfAsset || {
-    url: '/materials/becoming-her-companion-workbook.pdf',
-    name: 'becoming-her-companion-workbook.pdf',
-    title: 'Becoming Her Sacred Companion Workbook'
-  };
+  const finalPdf = pdfAsset;
 
   const resendApiKey = process.env.RESEND_API_KEY;
   const emailFrom = process.env.EMAIL_FROM || 'Becoming Her <onboarding@resend.dev>';
   const subject = `✨ Your Becoming Her Materials: ${serviceTitle} (${orderReference})`;
 
   // Ensure download URL is absolute if provided as relative path
-  let downloadUrl = finalPdf.url;
-  if (downloadUrl.startsWith('/')) {
+  let downloadUrl = finalPdf?.url;
+  if (downloadUrl && downloadUrl.startsWith('/')) {
     let baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL || 'https://becomingher-five.vercel.app';
     
     // Fix common misconfiguration where NEXT_PUBLIC_APP_URL is left as localhost in production
@@ -258,8 +251,8 @@ export async function sendServicePdfEmail(params: SendServicePdfEmailParams): Pr
     customerName,
     serviceTitle,
     orderReference,
-    pdfTitle: finalPdf.title,
-    pdfName: finalPdf.name,
+    pdfTitle: finalPdf?.title,
+    pdfName: finalPdf?.name,
     downloadUrl,
     resources: params.resources || store.getServiceById(serviceId)?.resources || []
   });
@@ -275,10 +268,10 @@ export async function sendServicePdfEmail(params: SendServicePdfEmailParams): Pr
       };
 
       // If PDF URL is a public web link (and not localhost), attach it directly
-      if ((downloadUrl.startsWith('http://') || downloadUrl.startsWith('https://')) && !downloadUrl.includes('localhost')) {
+      if (downloadUrl && (downloadUrl.startsWith('http://') || downloadUrl.startsWith('https://')) && !downloadUrl.includes('localhost')) {
         emailPayload.attachments = [
           {
-            filename: finalPdf.name,
+            filename: finalPdf?.name || 'materials.pdf',
             path: downloadUrl
           }
         ];
@@ -316,7 +309,7 @@ export async function sendServicePdfEmail(params: SendServicePdfEmailParams): Pr
       store.addAuditLog(
         'EMAIL_SENT_RESEND',
         'EMAIL',
-        `Service PDF "${finalPdf.name}" sent to ${customerEmail} for Order ${orderReference} via Resend (ID: ${data.id})`
+        `Service PDF "${finalPdf?.name || 'Materials'}" sent to ${customerEmail} for Order ${orderReference} via Resend (ID: ${data.id})`
       );
 
       return {
@@ -324,7 +317,7 @@ export async function sendServicePdfEmail(params: SendServicePdfEmailParams): Pr
         provider: 'RESEND',
         message: `Email successfully dispatched to ${customerEmail} via Resend.`,
         pdfUrl: downloadUrl,
-        pdfName: finalPdf.name,
+        pdfName: finalPdf?.name,
         timestamp: new Date().toISOString()
       };
     } catch (err: any) {
@@ -341,7 +334,7 @@ export async function sendServicePdfEmail(params: SendServicePdfEmailParams): Pr
   store.addAuditLog(
     'EMAIL_SIMULATED_PENDING_CONFIG',
     'EMAIL',
-    `Simulated PDF email dispatch for Order ${orderReference} to ${customerEmail} (PDF: "${finalPdf.name}"). To send live emails, set RESEND_API_KEY in .env.local and Vercel.`
+    `Simulated PDF email dispatch for Order ${orderReference} to ${customerEmail} (PDF: "${finalPdf?.name || 'Materials'}"). To send live emails, set RESEND_API_KEY in .env.local and Vercel.`
   );
 
   return {
@@ -349,7 +342,7 @@ export async function sendServicePdfEmail(params: SendServicePdfEmailParams): Pr
     provider: 'SIMULATED',
     message: `PDF fulfillment email prepared for ${customerEmail}. To deliver live emails, configure RESEND_API_KEY in your environment.`,
     pdfUrl: downloadUrl,
-    pdfName: finalPdf.name,
+    pdfName: finalPdf?.name,
     timestamp: new Date().toISOString()
   };
 }
