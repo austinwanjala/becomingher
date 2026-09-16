@@ -234,10 +234,10 @@ export default function AdminProgrammesPage() {
       id: `ref-q-${Date.now()}`,
       question: newQuestionText.trim(),
       placeholder: 'Type your reflection...',
-      order: selectedModule.reflection_questions.length + 1
+      order: (selectedModule.reflection_questions || []).length + 1
     };
 
-    const updatedQuestions = [...selectedModule.reflection_questions, newQ];
+    const updatedQuestions = [...(selectedModule.reflection_questions || []), newQ];
     const safeModules = programme.modules || [];
     const updatedModules = safeModules.map((m) =>
       m.id === selectedModule.id ? { ...m, reflection_questions: updatedQuestions } : m
@@ -261,7 +261,7 @@ export default function AdminProgrammesPage() {
     e.preventDefault();
     if (!programme || !isEditingLesson || !selectedModule) return;
 
-    const updatedLessons = selectedModule.lessons.map((l) =>
+    const updatedLessons = (selectedModule.lessons || []).map((l) =>
       l.id === isEditingLesson.id
         ? { ...l, title: lessonTitle, duration: lessonDuration, content: lessonContent }
         : l
@@ -658,7 +658,7 @@ export default function AdminProgrammesPage() {
                       Module {idx + 1}
                     </span>
                     <span className="text-[11px] text-stone-500">
-                      {mod.lessons.length} Lessons • {mod.reflection_questions.length} Questions
+                      {mod.lessons?.length || 0} Lessons • {mod.reflection_questions?.length || 0} Questions
                     </span>
                   </div>
                   <h4 className="font-serif font-semibold text-sm text-stone-900">{mod.title}</h4>
@@ -689,7 +689,7 @@ export default function AdminProgrammesPage() {
                 </div>
 
                 <div className="space-y-2">
-                  {selectedModule.lessons.map((lesson) => (
+                  {(selectedModule.lessons || []).map((lesson) => (
                     <div
                       key={lesson.id}
                       className="p-4 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-between text-xs"
@@ -715,7 +715,7 @@ export default function AdminProgrammesPage() {
                   Guided Reflection Questions
                 </h4>
                 <div className="space-y-2">
-                  {selectedModule.reflection_questions.map((q, qIdx) => (
+                  {(selectedModule.reflection_questions || []).map((q, qIdx) => (
                     <div
                       key={q.id}
                       className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-xs flex items-start gap-2"
