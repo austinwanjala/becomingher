@@ -154,7 +154,7 @@ export class SelarPaymentProvider implements PaymentProvider {
       // Suspend/revoke entitlement
       const entitlement = store.entitlements.find((e) => e.order_id === order.id);
       if (entitlement) {
-        entitlement.status = 'REVOKED';
+        entitlement.status = 'CANCELLED';
       }
       store.addAuditLog('PAYMENT_REFUNDED', 'ORDERS', `Order ${order.order_reference} refunded. Reason: ${reason || 'Customer request'}`);
       return { success: true, message: 'Payment marked as refunded and entitlement revoked.' };
