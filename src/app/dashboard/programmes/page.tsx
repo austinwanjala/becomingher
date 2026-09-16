@@ -57,10 +57,6 @@ export default function ProgrammesDashboardPage() {
     });
   }, []);
 
-  const book = programme?.book;
-  const activeModule = programme?.modules.find((m) => m.id === activeModuleId) || programme?.modules[0];
-  const activeLesson = activeModule?.lessons.find((l) => l.id === activeLessonId) || activeModule?.lessons[0];
-
   // Book Reader Modal State
   const [isReadingBook, setIsReadingBook] = useState(false);
 
@@ -74,34 +70,6 @@ export default function ProgrammesDashboardPage() {
   const [completedLessons, setCompletedLessons] = useState<Record<string, boolean>>({
     'les-1-1': true
   });
-
-  const handleSaveReflection = (questionId: string, questionText: string) => {
-    const text = reflections[questionId] || '';
-    if (!text.trim()) return;
-
-    store.reflections.unshift({
-      id: `ref-${Date.now()}`,
-      user_id: customerId,
-      programme_id: programme.id,
-      module_id: activeModule.id,
-      question_id: questionId,
-      question: questionText,
-      response: text,
-      created_at: new Date().toISOString()
-    });
-
-    setSavedStatus((prev) => ({ ...prev, [questionId]: true }));
-    setTimeout(() => {
-      setSavedStatus((prev) => ({ ...prev, [questionId]: false }));
-    }, 1000);
-  };
-
-  const toggleLessonCompleted = (lessonId: string) => {
-    setCompletedLessons((prev) => ({
-      ...prev,
-      [lessonId]: !prev[lessonId]
-    }));
-  };
 
   // =========================================================================
   // UNPAID / NOT ACQUIRED ACCESS ENFORCEMENT
@@ -121,6 +89,8 @@ export default function ProgrammesDashboardPage() {
       </div>
     );
   }
+
+  const book = programme.book;
 
   if (!hasAccess) {
     return (
@@ -200,12 +170,52 @@ export default function ProgrammesDashboardPage() {
     );
   }
 
+  const activeModule = programme.modules.find((m) => m.id === activeModuleId) || programme.modules[0];
+  
+  if (!activeModule) {
+    return (
+      <div className="min-h-screen bg-[#FAF8F5] pt-8 flex items-center justify-center">
+        <div className="text-stone-500">No modules available.</div>
+      </div>
+    );
+  }
+
+  const activeLesson = activeModule.lessons?.find((l) => l.id === activeLessonId) || activeModule.lessons?.[0];
+
+  const handleSaveReflection = (questionId: string, questionText: string) => {
+    const text = reflections[questionId] || '';
+    if (!text.trim()) return;
+
+    store.reflections.unshift({
+      id: `ref-${Date.now()}`,
+      user_id: customerId,
+      programme_id: programme.id,
+      module_id: activeModule.id,
+      question_id: questionId,
+      question: questionText,
+      response: text,
+      created_at: new Date().toISOString()
+    });
+
+    setSavedStatus((prev) => ({ ...prev, [questionId]: true }));
+    setTimeout(() => {
+      setSavedStatus((prev) => ({ ...prev, [questionId]: false }));
+    }, 1000);
+  };
+
+  const toggleLessonCompleted = (lessonId: string) => {
+    setCompletedLessons((prev) => ({
+      ...prev,
+      [lessonId]: !prev[lessonId]
+    }));
+  };
+
   // =========================================================================
   // ACTIVE MEMBER UNLOCKED EXPERIENCE
   // =========================================================================
-  const totalLessons = programme.modules.reduce((acc, m) => acc + m.lessons.length, 0);
+  const totalLessons = programme.modules.reduce((acc, m) => acc + (m.lessons?.length || 0), 0);
   const completedCount = Object.values(completedLessons).filter(Boolean).length;
-  const progressPercent = Math.min(100, Math.round((completedCount / totalLessons) * 100));
+  const progressPercent = totalLessons > 0 ? Math.min(100, Math.round((completedCount / totalLessons) * 100)) : 0;
 
   return (
     <div className="space-y-8">

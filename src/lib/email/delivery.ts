@@ -38,7 +38,7 @@ export interface EmailDeliveryResult {
 export async function resolveServicePdf(serviceId: string): Promise<{ url: string; name: string; title: string } | null> {
   const service = await getServiceById(serviceId);
   
-  if (service?.pdf_url) {
+  if (service?.pdf_url && !service.pdf_url.includes('becoming-her-companion-workbook.pdf') && !service.pdf_url.includes('new-service-materials.pdf')) {
     return {
       url: service.pdf_url,
       name: service.pdf_name || `${service.slug}-materials.pdf`,

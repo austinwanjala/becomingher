@@ -158,9 +158,9 @@ export default function AdminServicesPage() {
     setDescription(srv.description);
     setSelarProductId(srv.selar_product_id || 'v09683c927');
     setSelarProductUrl(srv.selar_product_url || 'https://selar.com/v09683c927');
-    setPdfTitle(srv.pdf_title || (srv.type === 'DIGITAL_PROGRAMME' ? 'Becoming Her Sacred Companion Workbook & Manifesto' : `${srv.name} Materials`));
-    setPdfName(srv.pdf_name || (srv.type === 'DIGITAL_PROGRAMME' ? 'becoming-her-companion-workbook.pdf' : `${srv.slug}-materials.pdf`));
-    setPdfUrl(srv.pdf_url || '/materials/becoming-her-companion-workbook.pdf');
+    setPdfTitle(srv.pdf_title || '');
+    setPdfName(srv.pdf_name || '');
+    setPdfUrl(srv.pdf_url || '');
     setResources(srv.resources || []);
     setIsActive(srv.is_active);
     setIsFeatured(srv.is_featured);
@@ -179,9 +179,9 @@ export default function AdminServicesPage() {
     setDescription('Comprehensive digital coaching journey.');
     setSelarProductId('v09683c927');
     setSelarProductUrl('https://selar.com/v09683c927');
-    setPdfTitle('Becoming Her Sacred Companion Workbook');
-    setPdfName('becoming-her-companion-workbook.pdf');
-    setPdfUrl('/materials/becoming-her-companion-workbook.pdf');
+    setPdfTitle('');
+    setPdfName('');
+    setPdfUrl('');
     setResources([]);
     setIsActive(true);
     setIsFeatured(false);
