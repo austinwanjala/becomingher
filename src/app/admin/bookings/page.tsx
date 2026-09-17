@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Calendar as CalendarIcon,
   Clock,
@@ -13,32 +13,79 @@ import {
   ShieldCheck,
   ExternalLink,
   Mail,
-  Loader2
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import { store } from '@/lib/store';
 import { Booking } from '@/types';
+import { createClient } from '@/utils/supabase/client';
 
 export default function AdminBookingsPage() {
-  const [bookings, setBookings] = useState<Booking[]>(store.bookings);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
   const [coach, setCoach] = useState(store.coach);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [manualMeetingLink, setManualMeetingLink] = useState('');
   const [isResending, setIsResending] = useState<string | null>(null);
+
+  const fetchBookings = async () => {
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching bookings from Supabase:', error);
+        setBookings(store.bookings);
+      } else if (data && data.length > 0) {
+        // Map database bookings
+        setBookings(data as Booking[]);
+      } else {
+        // Fallback to store bookings if none in DB
+        setBookings(store.bookings);
+      }
+    } catch (err) {
+      console.error('Error loading bookings:', err);
+      setBookings(store.bookings);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBookings();
+  }, []);
 
   const startEditMeetingLink = (booking: Booking) => {
     setEditingBooking(booking);
     setManualMeetingLink(booking.meeting_link || `https://meet.google.com/bch-${Math.random().toString(36).substring(2, 6)}`);
   };
 
-  const saveMeetingLink = (e: React.FormEvent) => {
+  const saveMeetingLink = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingBooking) return;
 
-    editingBooking.meeting_link = manualMeetingLink;
-    editingBooking.booking_status = 'CONFIRMED';
-    setBookings([...bookings]);
-    store.addAuditLog('BOOKING_MEETING_LINK_UPDATED', 'BOOKINGS', `Meeting link set for booking ${editingBooking.id}`);
-    setEditingBooking(null);
+    try {
+      const supabase = createClient();
+      await supabase
+        .from('bookings')
+        .update({
+          meeting_link: manualMeetingLink,
+          booking_status: 'CONFIRMED'
+        })
+        .eq('id', editingBooking.id);
+
+      editingBooking.meeting_link = manualMeetingLink;
+      editingBooking.booking_status = 'CONFIRMED';
+      setBookings([...bookings]);
+      store.addAuditLog('BOOKING_MEETING_LINK_UPDATED', 'BOOKINGS', `Meeting link set for booking ${editingBooking.id}`);
+      setEditingBooking(null);
+    } catch (err: any) {
+      alert(`Error updating meeting link: ${err.message}`);
+    }
   };
 
   const resendEmail = async (id: string) => {
@@ -59,14 +106,24 @@ export default function AdminBookingsPage() {
     }
   };
 
-  const cancelBooking = (id: string) => {
+  const cancelBooking = async (id: string) => {
     const confirm = window.confirm('Cancel this booking? Customer will be notified.');
     if (!confirm) return;
 
-    const updated = bookings.map((b) => (b.id === id ? { ...b, booking_status: 'CANCELLED' as const } : b));
-    setBookings(updated);
-    store.bookings = updated;
-    store.addAuditLog('BOOKING_CANCELLED', 'BOOKINGS', `Booking ${id} cancelled by admin.`);
+    try {
+      const supabase = createClient();
+      await supabase
+        .from('bookings')
+        .update({ booking_status: 'CANCELLED' })
+        .eq('id', id);
+
+      const updated = bookings.map((b) => (b.id === id ? { ...b, booking_status: 'CANCELLED' as const } : b));
+      setBookings(updated);
+      store.bookings = updated;
+      store.addAuditLog('BOOKING_CANCELLED', 'BOOKINGS', `Booking ${id} cancelled by admin.`);
+    } catch (err: any) {
+      alert(`Error cancelling booking: ${err.message}`);
+    }
   };
 
   return (
@@ -118,11 +175,29 @@ export default function AdminBookingsPage() {
       {/* Bookings Ledger */}
       <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-stone-100 flex items-center justify-between">
-          <h3 className="font-serif text-lg font-semibold text-stone-900">Session Bookings</h3>
-          <span className="text-xs text-stone-500">{bookings.length} Bookings</span>
+          <div className="flex items-center gap-3">
+            <h3 className="font-serif text-lg font-semibold text-stone-900">Session Bookings</h3>
+            <button
+              onClick={fetchBookings}
+              disabled={loading}
+              className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition"
+              title="Refresh Bookings"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+          <span className="text-xs text-stone-500 font-medium">
+            {loading ? 'Refreshing...' : `${bookings.length} Bookings`}
+          </span>
         </div>
 
         <div className="divide-y divide-stone-100 text-xs">
+          {loading && bookings.length === 0 && (
+            <div className="p-12 text-center text-stone-400 space-y-2">
+              <Loader2 className="w-6 h-6 animate-spin mx-auto text-rose-800" />
+              <p>Loading bookings from database...</p>
+            </div>
+          )}
           {bookings.map((b) => {
             const isConfirmed = b.booking_status === 'CONFIRMED';
 

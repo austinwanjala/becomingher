@@ -1,12 +1,50 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Calendar, Clock, Video, CheckCircle2, AlertCircle, Plus } from 'lucide-react';
+import { Calendar, Clock, Video, CheckCircle2, AlertCircle, Plus, Loader2 } from 'lucide-react';
 import { store } from '@/lib/store';
+import { Booking } from '@/types';
+import { createClient } from '@/utils/supabase/client';
 
 export default function SessionsDashboardPage() {
-  const customerId = 'cust-demo-01';
-  const bookings = store.bookings.filter((b) => b.customer_id === customerId);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadUserSessions() {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (user) {
+          const { data, error } = await supabase
+            .from('bookings')
+            .select('*')
+            .or(`customer_id.eq.${user.id},customer_email.eq.${user.email}`)
+            .order('created_at', { ascending: false });
+
+          if (!error && data && data.length > 0) {
+            setBookings(data as Booking[]);
+          } else {
+            // Fallback check in store by email
+            const storeMatched = store.bookings.filter(
+              (b) => b.customer_id === user.id || (user.email && b.customer_email?.toLowerCase() === user.email.toLowerCase())
+            );
+            setBookings(storeMatched);
+          }
+        } else {
+          setBookings(store.bookings.filter((b) => b.customer_id === 'cust-demo-01'));
+        }
+      } catch (err) {
+        console.error('Error loading sessions:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadUserSessions();
+  }, []);
 
   return (
     <div className="space-y-8">
@@ -28,6 +66,13 @@ export default function SessionsDashboardPage() {
           <span>Book Another Session</span>
         </Link>
       </div>
+
+      {loading && (
+        <div className="bg-white p-12 rounded-3xl border border-stone-200 text-center space-y-3">
+          <Loader2 className="w-6 h-6 animate-spin mx-auto text-rose-800" />
+          <p className="text-xs text-stone-500">Loading your coaching appointments...</p>
+        </div>
+      )}
 
       <div className="space-y-4">
         {bookings.map((booking) => {
@@ -98,7 +143,7 @@ export default function SessionsDashboardPage() {
           );
         })}
 
-        {bookings.length === 0 && (
+        {!loading && bookings.length === 0 && (
           <div className="bg-white p-12 rounded-3xl border border-stone-200 text-center space-y-3">
             <p className="text-xs text-stone-500">You have no booked coaching sessions yet.</p>
             <Link

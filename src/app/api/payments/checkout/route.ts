@@ -98,6 +98,27 @@ export async function POST(request: Request) {
           notes: bookingDetails.notes
         });
         pendingBookingId = tempBooking.id;
+
+        // Persist booking to Supabase bookings table
+        const adminSupabase = await createAdminClient();
+        await adminSupabase.from('bookings').upsert({
+          id: tempBooking.id,
+          customer_id: effectiveCustomerId,
+          customer_name: effectiveCustomerName,
+          customer_email: effectiveCustomerEmail,
+          coach_id: store.coach.id,
+          coach_name: store.coach.name,
+          service_id: service.id,
+          scheduled_date: bookingDetails.scheduledDate,
+          start_time: bookingDetails.startTime,
+          end_time: bookingDetails.endTime || '12:00',
+          timezone: bookingDetails.timezone || 'Africa/Nairobi (EAT)',
+          payment_status: 'PENDING',
+          booking_status: 'PENDING_PAYMENT',
+          reservation_expires_at: tempBooking.reservation_expires_at,
+          notes: bookingDetails.notes || null,
+          created_at: new Date().toISOString()
+        });
       } catch (err: any) {
         return NextResponse.json({ error: err.message }, { status: 409 });
       }
@@ -122,6 +143,7 @@ export async function POST(request: Request) {
       coupon_code: couponCode,
       metadata: {
         bookingId: pendingBookingId,
+        bookingDetails: bookingDetails || null,
         serviceType: service.type,
         disclaimer_accepted: true,
         disclaimer_version: '1.0',

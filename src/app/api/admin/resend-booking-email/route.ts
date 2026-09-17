@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { store } from '@/lib/store';
 import { sendServicePdfEmail } from '@/lib/email/delivery';
+import { createAdminClient } from '@/utils/supabase/server';
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,15 +12,40 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing booking ID' }, { status: 400 });
     }
 
-    const booking = store.bookings.find(b => b.id === bookingId);
+    const adminSupabase = await createAdminClient();
+    const { data: dbBookings } = await adminSupabase
+      .from('bookings')
+      .select('*')
+      .eq('id', bookingId)
+      .limit(1);
+
+    const booking = dbBookings?.[0] || store.bookings.find(b => b.id === bookingId);
     if (!booking) {
       return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
     }
 
     // Attempt to find the associated order to get customer email/name
-    const order = store.orders.find(o => o.metadata?.bookingId === bookingId || o.id === booking.order_id);
+    let order: any = null;
+    if (booking.order_id) {
+      const { data: dbOrders } = await adminSupabase
+        .from('orders')
+        .select('*')
+        .eq('id', booking.order_id)
+        .limit(1);
+      order = dbOrders?.[0];
+    }
     if (!order) {
-      return NextResponse.json({ error: 'Order for booking not found' }, { status: 404 });
+      order = store.orders.find(o => o.metadata?.bookingId === bookingId || o.id === booking.order_id);
+    }
+    if (!order) {
+      // Fallback: construct order info from booking customer details
+      order = {
+        customer_email: booking.customer_email,
+        customer_name: booking.customer_name,
+        service_id: booking.service_id,
+        service_name: '1-on-1 Interpersonal Session',
+        order_reference: booking.id
+      };
     }
 
     const emailResult = await sendServicePdfEmail({

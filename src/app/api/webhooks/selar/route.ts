@@ -56,7 +56,14 @@ export async function POST(request: Request) {
       if (result.status === 'SUCCESSFUL') {
         store.unlockEntitlement(existingOrder.customer_id, existingOrder.service_id, existingOrder.id);
         if (existingOrder.metadata?.bookingId) {
-          store.confirmBookingPayment(existingOrder.metadata.bookingId, existingOrder.id);
+          const confirmedBooking = store.confirmBookingPayment(existingOrder.metadata.bookingId, existingOrder.id);
+          const meetingLink = confirmedBooking?.meeting_link || `https://meet.google.com/bch-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 6)}`;
+          await supabase.from('bookings').update({
+            booking_status: 'CONFIRMED',
+            payment_status: 'SUCCESSFUL',
+            order_id: existingOrder.id,
+            meeting_link: meetingLink
+          }).eq('id', existingOrder.metadata.bookingId);
         }
         store.addAuditLog(
           'WEBHOOK_ORDER_COMPLETED',

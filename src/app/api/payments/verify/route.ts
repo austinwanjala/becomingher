@@ -46,9 +46,15 @@ export async function POST(request: Request) {
 
       // If order is successful but no entitlement exists, do NOT return early! Let it fall through to create it.
       if (entitlement) {
-        const booking = order.metadata?.bookingId
-          ? store.bookings.find((b) => b.id === order.metadata?.bookingId)
-          : undefined;
+        let booking = undefined;
+        if (order.metadata?.bookingId) {
+          const { data: bData } = await supabase
+            .from('bookings')
+            .select('*')
+            .eq('id', order.metadata.bookingId)
+            .limit(1);
+          booking = bData?.[0] || store.bookings.find((b) => b.id === order.metadata?.bookingId);
+        }
 
         return NextResponse.json({
           verified: true,
@@ -122,6 +128,34 @@ export async function POST(request: Request) {
       let confirmedBooking;
       if (order.metadata?.bookingId) {
         confirmedBooking = store.confirmBookingPayment(order.metadata.bookingId, order.id);
+        const meetingLink = confirmedBooking?.meeting_link || `https://meet.google.com/bch-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 6)}`;
+
+        const bookingPayload = {
+          id: order.metadata.bookingId,
+          customer_id: order.customer_id,
+          customer_name: order.customer_name,
+          customer_email: order.customer_email,
+          coach_id: store.coach.id,
+          coach_name: store.coach.name,
+          service_id: order.service_id,
+          scheduled_date: confirmedBooking?.scheduled_date || order.metadata?.bookingDetails?.scheduledDate || '2026-09-22',
+          start_time: confirmedBooking?.start_time || order.metadata?.bookingDetails?.startTime || '11:00',
+          end_time: confirmedBooking?.end_time || order.metadata?.bookingDetails?.endTime || '12:00',
+          timezone: confirmedBooking?.timezone || order.metadata?.bookingDetails?.timezone || 'Africa/Nairobi (EAT)',
+          order_id: order.id,
+          payment_status: 'SUCCESSFUL',
+          booking_status: 'CONFIRMED',
+          meeting_link: meetingLink,
+          notes: confirmedBooking?.notes || order.metadata?.bookingDetails?.notes || null,
+          created_at: order.created_at || new Date().toISOString()
+        };
+
+        const { data: dbBooking } = await supabase.from('bookings').upsert(bookingPayload).select().single();
+        if (dbBooking) {
+          confirmedBooking = dbBooking;
+        } else if (confirmedBooking) {
+          confirmedBooking.meeting_link = meetingLink;
+        }
       }
 
       store.addAuditLog(
