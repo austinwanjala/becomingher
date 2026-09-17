@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createAdminClient } from '@/utils/supabase/server'
 import { CURRENT_DISCLAIMER_VERSION } from '@/lib/disclaimer'
 
 export async function signup(formData: FormData) {
@@ -63,6 +63,23 @@ export async function signup(formData: FormData) {
   })
 
   if (!error && authData.user) {
+    // Proactively guarantee profile entry exists in public.profiles
+    try {
+      const adminSupabase = await createAdminClient();
+      await adminSupabase.from('profiles').upsert(
+        {
+          id: authData.user.id,
+          full_name: name || 'Beloved Member',
+          phone_number: phone || null,
+          role: 'CUSTOMER',
+          updated_at: new Date().toISOString()
+        },
+        { onConflict: 'id' }
+      );
+    } catch (profErr) {
+      console.warn('Could not auto-upsert profile after signup:', profErr);
+    }
+
     // Record disclaimer acceptance into store compliance log
     import('@/lib/store').then(async ({ store }) => {
       store.recordDisclaimerAcceptance({

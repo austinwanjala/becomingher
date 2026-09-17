@@ -153,6 +153,25 @@ export async function POST(request: Request) {
     pendingOrder.transaction_reference = checkout.transactionReference;
 
     const adminSupabase = await createAdminClient();
+
+    // Ensure customer profile exists in public.profiles to satisfy orders_customer_id_fkey foreign key
+    if (effectiveCustomerId) {
+      try {
+        await adminSupabase.from('profiles').upsert(
+          {
+            id: effectiveCustomerId,
+            full_name: effectiveCustomerName || 'Member',
+            phone_number: customerPhone || null,
+            role: 'CUSTOMER',
+            updated_at: new Date().toISOString()
+          },
+          { onConflict: 'id', ignoreDuplicates: true }
+        );
+      } catch (profErr) {
+        console.warn('Non-blocking profile check error:', profErr);
+      }
+    }
+
     const { error: insertError } = await adminSupabase
       .from('orders')
       .insert(pendingOrder);
@@ -160,7 +179,7 @@ export async function POST(request: Request) {
     if (insertError) {
       console.error('Error inserting order to Supabase:', insertError);
       return NextResponse.json(
-        { error: 'Database error while creating order.' },
+        { error: `Database error while creating order: ${insertError.message || insertError.details || 'Foreign key or RLS violation.'}` },
         { status: 500 }
       );
     }
