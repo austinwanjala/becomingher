@@ -59,6 +59,25 @@ export async function getProgrammeByServiceId(serviceId: string): Promise<Progra
 }
 
 /**
+ * Fetches a single programme by either its ID or service ID.
+ */
+export async function getProgrammeByIdOrServiceId(identifier: string): Promise<Programme | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('programmes')
+    .select('*')
+    .or(`id.eq.${identifier},service_id.eq.${identifier}`)
+    .maybeSingle();
+
+  if (error) {
+    console.error(`Error fetching programme by identifier ${identifier}:`, error);
+    return null;
+  }
+
+  return data as Programme;
+}
+
+/**
  * Saves a programme (upsert) to Supabase.
  * Admin operation.
  */

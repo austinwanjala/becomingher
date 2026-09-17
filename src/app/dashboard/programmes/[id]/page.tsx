@@ -18,11 +18,12 @@ import {
   Eye,
   X,
   FileCheck,
-  BookMarked
+  BookMarked,
+  Calendar
 } from 'lucide-react';
 import { store } from '@/lib/store';
 import { getServiceById } from '@/lib/services';
-import { getProgrammeByServiceId } from '@/lib/programmes';
+import { getProgrammeByIdOrServiceId } from '@/lib/programmes';
 import { Service, Programme } from '@/types';
 import { useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
@@ -48,32 +49,50 @@ export default function ProgrammesDashboardPage() {
   useEffect(() => {
     const supabase = createClient();
     
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       setUser(user);
       
-      Promise.all([
+      // Auto-sync entitlements in background
+      try {
+        await fetch('/api/auth/sync-entitlements', { method: 'POST' });
+      } catch (e) {
+        // ignore
+      }
+
+      const [svcData, progData] = await Promise.all([
         getServiceById(serviceId),
-        getProgrammeByServiceId(serviceId),
-        user ? supabase.from('entitlements').select('*').eq('customer_id', user.id).eq('service_id', serviceId).eq('status', 'ACTIVE') : Promise.resolve({ data: null })
-      ]).then(([svcData, progData, entData]) => {
-        if (svcData) setService(svcData);
-        if (progData) {
-          setProgramme(progData);
-          if (progData.modules && progData.modules.length > 0) {
-            setActiveModuleId(progData.modules[0].id);
-            if (progData.modules[0].lessons && progData.modules[0].lessons.length > 0) {
-              setActiveLessonId(progData.modules[0].lessons[0].id);
-            }
+        getProgrammeByIdOrServiceId(serviceId)
+      ]);
+
+      if (svcData) setService(svcData);
+      if (progData) {
+        setProgramme(progData);
+        if (progData.modules && progData.modules.length > 0) {
+          setActiveModuleId(progData.modules[0].id);
+          if (progData.modules[0].lessons && progData.modules[0].lessons.length > 0) {
+            setActiveLessonId(progData.modules[0].lessons[0].id);
           }
         }
-        if (entData && entData.data && entData.data.length > 0) {
+      }
+
+      if (user) {
+        const targetServiceId = progData?.service_id || svcData?.id || serviceId;
+        const { data: entData } = await supabase
+          .from('entitlements')
+          .select('*')
+          .eq('customer_id', user.id)
+          .or(`service_id.eq.${targetServiceId},service_id.eq.${serviceId}`)
+          .eq('status', 'ACTIVE');
+
+        if (entData && entData.length > 0) {
           setHasAccess(true);
-          setEntitlement(entData.data[0]);
+          setEntitlement(entData[0]);
         }
-        setIsLoading(false);
-      });
+      }
+
+      setIsLoading(false);
     });
-  }, []);
+  }, [serviceId]);
 
   // Book Reader Modal State
   const [isReadingBook, setIsReadingBook] = useState(false);
@@ -146,9 +165,121 @@ export default function ProgrammesDashboardPage() {
   };
 
   if (!programme) {
+    if (serviceId === 'srv-book-04') {
+      return (
+        <div className="max-w-2xl mx-auto py-12 space-y-8">
+          <div className="text-center space-y-3">
+            <div className="w-14 h-14 rounded-full bg-rose-100 text-rose-900 mx-auto flex items-center justify-center shadow-sm">
+              <BookOpen className="w-7 h-7" />
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-rose-900 bg-rose-50 px-3 py-1 rounded-full border border-rose-200">
+              Digital Product • Sacred Companion
+            </span>
+            <h2 className="font-serif text-3xl font-semibold text-stone-900">
+              Becoming Her Companion Workbook
+            </h2>
+            <p className="text-xs sm:text-sm text-stone-600 max-w-md mx-auto leading-relaxed">
+              Your 142-page reflective manual featuring somatic prompts, self-governance frameworks, and habit architecture matrices.
+            </p>
+          </div>
+
+          <div className="bg-white p-7 rounded-3xl border border-stone-200 shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
+              <div className="w-24 aspect-[3/4] rounded-xl overflow-hidden shadow-md shrink-0 border border-stone-200">
+                <img
+                  src="https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=800"
+                  alt="Workbook Cover"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="space-y-2">
+                <h3 className="font-serif text-lg font-bold text-stone-900">
+                  The Reflective Manifesto & Journaling Frameworks
+                </h3>
+                <p className="text-xs text-stone-600 leading-relaxed">
+                  Authored by Lead Coach Zipporah Karanja. Download your personal copy or view your orders in the customer portal.
+                </p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <a
+                    href="/api/programmes/prog-guided-01/book?download=1"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-5 py-2.5 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-rose-950 transition flex items-center gap-2 shadow"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Download Official PDF</span>
+                  </a>
+                  <Link
+                    href="/dashboard/purchases"
+                    className="px-4 py-2.5 rounded-xl bg-stone-100 text-stone-700 text-xs font-semibold hover:bg-stone-200 transition flex items-center gap-2"
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>View Receipt & Purchases</span>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-center pt-2">
+            <Link
+              href="/dashboard/programmes"
+              className="text-xs font-semibold text-rose-800 hover:text-rose-950 transition inline-flex items-center gap-1"
+            >
+              <span>← Return to All Programmes</span>
+            </Link>
+          </div>
+        </div>
+      );
+    }
+
+    if (serviceId === 'srv-interpersonal-03') {
+      return (
+        <div className="max-w-2xl mx-auto py-12 space-y-8 text-center">
+          <div className="w-14 h-14 rounded-full bg-rose-100 text-rose-900 mx-auto flex items-center justify-center shadow-sm">
+            <Calendar className="w-7 h-7" />
+          </div>
+          <div className="space-y-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-rose-900 bg-rose-50 px-3 py-1 rounded-full border border-rose-200">
+              1-on-1 Mentorship Container
+            </span>
+            <h2 className="font-serif text-3xl font-semibold text-stone-900">
+              Private Interpersonal Coaching
+            </h2>
+            <p className="text-xs sm:text-sm text-stone-600 max-w-md mx-auto leading-relaxed">
+              This service is structured as live video appointments with Lead Coach Zipporah Karanja rather than modular digital curricula.
+            </p>
+          </div>
+          <div className="pt-2">
+            <Link
+              href="/dashboard/sessions"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-rose-950 transition shadow"
+            >
+              <Calendar className="w-4 h-4" />
+              <span>Go to My Scheduled Sessions</span>
+            </Link>
+          </div>
+        </div>
+      );
+    }
+
     return (
-      <div className="min-h-screen bg-[#FAF8F5] pt-8 flex items-center justify-center">
-        <div className="text-stone-500">Programme not found.</div>
+      <div className="max-w-md mx-auto py-16 text-center space-y-4">
+        <div className="w-12 h-12 rounded-full bg-stone-100 text-stone-500 mx-auto flex items-center justify-center">
+          <BookOpen className="w-6 h-6" />
+        </div>
+        <h3 className="font-serif text-xl font-semibold text-stone-900">Programme Not Found</h3>
+        <p className="text-xs text-stone-600">
+          The requested programme could not be located. Explore your active curricula in My Programmes.
+        </p>
+        <div className="pt-2">
+          <Link
+            href="/dashboard/programmes"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-rose-950 transition shadow"
+          >
+            <span>Back to My Programmes</span>
+          </Link>
+        </div>
       </div>
     );
   }
