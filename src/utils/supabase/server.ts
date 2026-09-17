@@ -25,10 +25,10 @@ function getValidSupabaseUrl(rawUrl?: string): string {
 }
 
 function getValidSupabaseKey(rawKey?: string): string {
-  if (!rawKey) return 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.placeholder_anon_key';
+  if (!rawKey) return '';
   const trimmed = rawKey.trim().replace(/^["']|["']$/g, '').trim();
   if (trimmed === 'your-supabase-anon-key' || trimmed.length < 10) {
-    return 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.placeholder_anon_key';
+    return '';
   }
   return trimmed;
 }
@@ -36,7 +36,7 @@ function getValidSupabaseKey(rawKey?: string): string {
 export async function createClient() {
   const cookieStore = await cookies()
   const url = getValidSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
-  const key = getValidSupabaseKey(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const key = getValidSupabaseKey(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.placeholder_anon_key';
 
   return createServerClient(
     url,
@@ -64,15 +64,18 @@ export async function createClient() {
 
 export async function createAdminClient() {
   const url = getValidSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceKey = getValidSupabaseKey(process.env.SUPABASE_SERVICE_ROLE_KEY);
+  const anonKey = getValidSupabaseKey(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
-  if (!key) {
-    console.warn('SUPABASE_SERVICE_ROLE_KEY is not defined. Falling back to ANON key (RLS will apply).');
+  const keyToUse = serviceKey || anonKey;
+
+  if (!serviceKey) {
+    console.warn('⚠️ SUPABASE_SERVICE_ROLE_KEY is missing or invalid in environment variables. Falling back to ANON key.');
   }
 
   return createServerClient(
     url,
-    key || getValidSupabaseKey(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+    keyToUse || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.placeholder_anon_key',
     {
       cookies: {
         getAll() {

@@ -172,14 +172,29 @@ export async function POST(request: Request) {
       }
     }
 
-    const { error: insertError } = await adminSupabase
+    let { error: insertError } = await adminSupabase
       .from('orders')
       .insert(pendingOrder);
 
+    // If adminSupabase encountered an API key issue, attempt fallback with the authenticated user client
+    if (insertError && user) {
+      console.warn('adminSupabase insert failed, attempting authenticated user client fallback:', insertError.message);
+      const userResult = await supabase
+        .from('orders')
+        .insert(pendingOrder);
+      if (!userResult.error) {
+        insertError = null;
+      }
+    }
+
     if (insertError) {
       console.error('Error inserting order to Supabase:', insertError);
+      let errorDetail = insertError.message || insertError.details || 'Database constraint violation.';
+      if (errorDetail.toLowerCase().includes('api key')) {
+        errorDetail = 'Invalid Supabase API key. Please check SUPABASE_SERVICE_ROLE_KEY in your Vercel Environment Variables and ensure it has no extra quotes or spaces.';
+      }
       return NextResponse.json(
-        { error: `Database error while creating order: ${insertError.message || insertError.details || 'Foreign key or RLS violation.'}` },
+        { error: `Database error while creating order: ${errorDetail}` },
         { status: 500 }
       );
     }
