@@ -346,6 +346,10 @@ export interface SiteBrandSettings {
   logo_dark_url?: string;
   favicon_url?: string;
   logo_height_px?: number;
+  admin_notification_email?: string;
+  support_email?: string;
+  phone?: string;
+  currency?: string;
 }
 
 export interface SiteCMSContent {

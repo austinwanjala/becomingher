@@ -9,6 +9,7 @@ import { store } from '@/lib/store';
 import { SHORT_DISCLAIMER } from '@/lib/disclaimer';
 import { ServiceResource } from '@/types';
 import { getServiceById } from '@/lib/services';
+import { createAdminClient } from '@/utils/supabase/server';
 
 export interface SendServicePdfEmailParams {
   customerEmail: string;
@@ -667,6 +668,319 @@ export async function sendPasswordResetEmail({
     success: true,
     provider: 'SIMULATED',
     message: `Password reset link generated for ${email}`,
+    timestamp: new Date().toISOString()
+  };
+}
+
+export interface SendAdminOrderNotificationParams {
+  orderReference: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone?: string;
+  serviceTitle: string;
+  serviceId?: string;
+  amount: number;
+  currency: string;
+  paymentProvider?: string;
+  paymentStatus?: string;
+  booking?: {
+    scheduledDate: string;
+    startTime: string;
+    meetingLink?: string;
+    coachName?: string;
+  };
+  isTest?: boolean;
+}
+
+/**
+ * Sends a real-time executive alert to the configured admin email(s) whenever
+ * a customer completes a purchase, payment, or enrollment.
+ */
+export async function sendAdminOrderNotificationEmail(
+  params: SendAdminOrderNotificationParams
+): Promise<EmailDeliveryResult> {
+  const {
+    orderReference,
+    customerName,
+    customerEmail,
+    customerPhone,
+    serviceTitle,
+    amount,
+    currency,
+    paymentProvider = 'SELAR',
+    paymentStatus = 'SUCCESSFUL',
+    booking,
+    isTest = false
+  } = params;
+
+  const brandName = store.brand?.name || 'Becoming Her';
+  const currentYear = new Date().getFullYear();
+
+  // 1. Resolve admin notification email address(es) from DB site_settings, env, or fallback
+  let configuredEmails = '';
+  try {
+    const adminSupabase = await createAdminClient();
+    const { data: settingsData } = await adminSupabase
+      .from('site_settings')
+      .select('brand')
+      .eq('id', 'global')
+      .single();
+    if (settingsData?.brand?.admin_notification_email) {
+      configuredEmails = settingsData.brand.admin_notification_email;
+    }
+  } catch (err) {
+    console.warn('Could not read admin_notification_email from site_settings:', err);
+  }
+
+  if (!configuredEmails) {
+    configuredEmails =
+      process.env.ADMIN_NOTIFICATION_EMAIL ||
+      process.env.ADMIN_EMAILS ||
+      store.brand?.admin_notification_email ||
+      'hello@becomingher.co.ke';
+  }
+
+  // Parse comma/semicolon/space separated emails
+  const recipients = configuredEmails
+    .split(/[,;\s]+/)
+    .map((e) => e.trim().toLowerCase())
+    .filter((e) => e.includes('@') && e.includes('.'));
+
+  if (recipients.length === 0) {
+    recipients.push('hello@becomingher.co.ke');
+  }
+
+  // Base URL for links
+  let baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ||
+    process.env.VERCEL_URL ||
+    'https://becomingher-five.vercel.app';
+  if (baseUrl.includes('localhost') && process.env.VERCEL) {
+    baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL || 'becomingher-five.vercel.app';
+  }
+  if (!baseUrl.startsWith('http')) {
+    baseUrl = `https://${baseUrl}`;
+  }
+  baseUrl = baseUrl.replace(/\/$/, '');
+
+  const adminOrdersUrl = `${baseUrl}/admin/orders`;
+  const adminCustomersUrl = `${baseUrl}/admin/customers`;
+
+  const subject = `${isTest ? '[TEST ALERT] ' : ''}🎉 New Customer Enrollment: ${customerName} - ${serviceTitle} (${orderReference})`;
+
+  const formattedAmount = `${currency} ${amount.toLocaleString()}`;
+  const transactionTime = new Date().toLocaleString('en-KE', {
+    dateStyle: 'full',
+    timeStyle: 'short',
+    timeZone: 'Africa/Nairobi'
+  });
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Customer Enrollment Alert</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #FAF8F5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1c1917; line-height: 1.6;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #FAF8F5; padding: 32px 16px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 620px; background-color: #ffffff; border-radius: 24px; border: 1px solid #e7e5e4; overflow: hidden; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);">
+          
+          <!-- Header Banner -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #4c0519 0%, #1c1917 100%); padding: 32px 28px; text-align: center;">
+              <span style="display: inline-block; background-color: rgba(254, 243, 199, 0.15); border: 1px solid rgba(254, 243, 199, 0.3); color: #fef3c7; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; padding: 4px 12px; border-radius: 9999px;">
+                🔔 Sanctuary Admin Notification
+              </span>
+              <h1 style="margin: 12px 0 4px; font-family: Georgia, serif; font-size: 24px; font-weight: normal; color: #ffffff; letter-spacing: 0.5px;">
+                ${isTest ? 'Test Order & Enrollment Alert' : 'New Customer Enrollment Confirmed'}
+              </h1>
+              <p style="margin: 0; font-size: 12px; color: #fecdd3;">
+                Order ${orderReference} &bull; Received ${transactionTime}
+              </p>
+            </td>
+          </tr>
+
+          <!-- Main Content -->
+          <tr>
+            <td style="padding: 32px 28px;">
+              <p style="margin: 0 0 20px; font-size: 14px; color: #44403c; line-height: 1.6;">
+                A customer has successfully purchased and enrolled in a sanctuary offering on <strong>${brandName}</strong>. Access entitlements have been provisioned and customer fulfillment dispatched.
+              </p>
+
+              <!-- Enrollment Summary Box -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #fdf2f4; border: 1px solid #fecdd3; border-radius: 16px; margin: 0 0 24px; overflow: hidden;">
+                <tr>
+                  <td style="padding: 18px 20px;">
+                    <p style="margin: 0 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #9f1239; font-weight: 700;">
+                      Service / Programme Enrolled
+                    </p>
+                    <h3 style="margin: 0 0 8px; font-family: Georgia, serif; font-size: 18px; color: #881337;">
+                      ${serviceTitle}
+                    </h3>
+                    <p style="margin: 0; font-size: 14px; font-weight: 700; color: #1c1917;">
+                      Payment Amount: <span style="color: #059669;">${formattedAmount}</span>
+                      <span style="font-size: 11px; font-weight: normal; color: #78716c; margin-left: 8px;">(${paymentProvider} &bull; ${paymentStatus})</span>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Customer Details Card -->
+              <h4 style="margin: 0 0 12px; font-size: 13px; text-transform: uppercase; letter-spacing: 1.2px; color: #78716c; font-weight: 700;">
+                Customer Information
+              </h4>
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #fafaf9; border: 1px solid #e7e5e4; border-radius: 14px; margin: 0 0 24px; padding: 14px 18px;">
+                <tr>
+                  <td style="padding: 6px 0; font-size: 13px; color: #78716c; width: 120px; font-weight: 600;">Full Name:</td>
+                  <td style="padding: 6px 0; font-size: 13px; color: #1c1917; font-weight: 700;">${customerName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 6px 0; font-size: 13px; color: #78716c; font-weight: 600;">Email Address:</td>
+                  <td style="padding: 6px 0; font-size: 13px; color: #1c1917;">
+                    <a href="mailto:${customerEmail}" style="color: #9f1239; text-decoration: underline;">${customerEmail}</a>
+                  </td>
+                </tr>
+                ${customerPhone ? `
+                <tr>
+                  <td style="padding: 6px 0; font-size: 13px; color: #78716c; font-weight: 600;">Phone Number:</td>
+                  <td style="padding: 6px 0; font-size: 13px; color: #1c1917;">${customerPhone}</td>
+                </tr>
+                ` : ''}
+                <tr>
+                  <td style="padding: 6px 0; font-size: 13px; color: #78716c; font-weight: 600;">Order Ref:</td>
+                  <td style="padding: 6px 0; font-size: 13px; font-family: monospace; color: #1c1917; font-weight: 600;">${orderReference}</td>
+                </tr>
+              </table>
+
+              ${booking ? `
+              <!-- Coaching Session Booking Details -->
+              <h4 style="margin: 0 0 12px; font-size: 13px; text-transform: uppercase; letter-spacing: 1.2px; color: #047857; font-weight: 700;">
+                📅 Scheduled 1-on-1 Coaching Session
+              </h4>
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 14px; margin: 0 0 24px; padding: 14px 18px;">
+                <tr>
+                  <td style="padding: 6px 0; font-size: 13px; color: #065f46; width: 120px; font-weight: 600;">Date & Time:</td>
+                  <td style="padding: 6px 0; font-size: 13px; color: #064e3b; font-weight: 700;">${booking.scheduledDate} at ${booking.startTime}</td>
+                </tr>
+                ${booking.coachName ? `
+                <tr>
+                  <td style="padding: 6px 0; font-size: 13px; color: #065f46; font-weight: 600;">Lead Coach:</td>
+                  <td style="padding: 6px 0; font-size: 13px; color: #064e3b;">${booking.coachName}</td>
+                </tr>
+                ` : ''}
+                ${booking.meetingLink ? `
+                <tr>
+                  <td style="padding: 6px 0; font-size: 13px; color: #065f46; font-weight: 600;">Meeting Link:</td>
+                  <td style="padding: 6px 0; font-size: 13px; color: #047857;">
+                    <a href="${booking.meetingLink}" target="_blank" style="color: #047857; text-decoration: underline; font-family: monospace; word-break: break-all;">${booking.meetingLink}</a>
+                  </td>
+                </tr>
+                ` : ''}
+              </table>
+              ` : ''}
+
+              <!-- Admin Quick Action Links -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin: 28px 0 16px;">
+                <tr>
+                  <td align="center">
+                    <a href="${adminOrdersUrl}" style="display: inline-block; background-color: #1c1917; color: #ffffff; text-decoration: none; padding: 12px 26px; border-radius: 12px; font-weight: 600; font-size: 13px; margin: 4px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);">
+                      📊 View Orders in Admin Portal &rarr;
+                    </a>
+                    <a href="${adminCustomersUrl}" style="display: inline-block; background-color: #ffffff; border: 1.5px solid #d6d3d1; color: #44403c; text-decoration: none; padding: 11px 22px; border-radius: 12px; font-weight: 600; font-size: 13px; margin: 4px;">
+                      👥 View Customers
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <div style="margin-top: 24px; padding-top: 18px; border-top: 1px solid #f5f5f4;">
+                <p style="margin: 0; font-size: 11px; color: #a8a29e; line-height: 1.5;">
+                  This is an automated administrative dispatch configured in your Becoming Her Platform Settings. To adjust notification recipient addresses, visit the Admin Settings console.
+                </p>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #fafaf9; padding: 20px 28px; border-top: 1px solid #f5f5f4; text-align: center;">
+              <p style="margin: 0 0 4px; font-size: 11px; color: #78716c;">
+                © ${currentYear} ${brandName} Administration Console.
+              </p>
+              <p style="margin: 0; font-size: 10px; color: #a8a29e;">
+                Recipients: ${recipients.join(', ')}
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const emailFrom = process.env.EMAIL_FROM || 'Becoming Her <onboarding@resend.dev>';
+
+  if (resendApiKey) {
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: emailFrom,
+          to: recipients,
+          subject,
+          html: htmlContent
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || data.error || 'Resend admin notification error');
+      }
+
+      store.addAuditLog(
+        'ADMIN_NOTIFICATION_SENT',
+        'ADMIN',
+        `Admin order alert for ${orderReference} (${customerName}) dispatched to: ${recipients.join(', ')} (ID: ${data.id})`
+      );
+
+      return {
+        success: true,
+        provider: 'RESEND',
+        message: `Admin notification dispatched to ${recipients.join(', ')}`,
+        timestamp: new Date().toISOString()
+      };
+    } catch (err: any) {
+      console.error('Error dispatching admin notification email via Resend:', err);
+      store.addAuditLog(
+        'ADMIN_NOTIFICATION_FAILED',
+        'ADMIN',
+        `Failed to send admin notification for order ${orderReference}: ${err.message}`
+      );
+    }
+  }
+
+  store.addAuditLog(
+    'ADMIN_NOTIFICATION_SIMULATED',
+    'ADMIN',
+    `Simulated admin order alert for ${orderReference} to ${recipients.join(', ')}`
+  );
+
+  return {
+    success: true,
+    provider: 'SIMULATED',
+    message: `Admin notification simulated for ${recipients.join(', ')}`,
     timestamp: new Date().toISOString()
   };
 }

@@ -572,7 +572,11 @@ class Store {
     logo_url: '',
     logo_dark_url: '',
     favicon_url: '',
-    logo_height_px: 40
+    logo_height_px: 40,
+    admin_notification_email: 'hello@becomingher.co.ke',
+    support_email: 'hello@becomingher.co.ke',
+    phone: '+254 720 120 227',
+    currency: 'KES'
   };
 
   public cms: SiteCMSContent = {

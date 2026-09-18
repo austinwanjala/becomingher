@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { selarProvider } from '@/lib/payments/selar';
 import { store } from '@/lib/store';
 import { createAdminClient } from '@/utils/supabase/server';
-import { sendServicePdfEmail } from '@/lib/email/delivery';
+import { sendServicePdfEmail, sendAdminOrderNotificationEmail } from '@/lib/email/delivery';
 import { sendWhatsAppPostPaymentConfirmation } from '@/lib/whatsapp/notifications';
 
 export async function POST(request: Request) {
@@ -88,6 +88,17 @@ export async function POST(request: Request) {
             serviceId: existingOrder.service_id,
             serviceTitle: existingOrder.service_name,
             orderReference: existingOrder.order_reference
+          }),
+          sendAdminOrderNotificationEmail({
+            orderReference: existingOrder.order_reference,
+            customerName: existingOrder.customer_name,
+            customerEmail: existingOrder.customer_email,
+            serviceTitle: existingOrder.service_name,
+            serviceId: existingOrder.service_id,
+            amount: Number(existingOrder.amount || 0),
+            currency: existingOrder.currency || 'KES',
+            paymentProvider: 'SELAR',
+            paymentStatus: 'SUCCESSFUL'
           })
         ]);
       }
@@ -146,6 +157,17 @@ export async function POST(request: Request) {
             serviceId: newOrder.service_id,
             serviceTitle: newOrder.service_name,
             orderReference: newOrder.order_reference
+          }),
+          sendAdminOrderNotificationEmail({
+            orderReference: newOrder.order_reference,
+            customerName: newOrder.customer_name,
+            customerEmail: newOrder.customer_email,
+            serviceTitle: newOrder.service_name,
+            serviceId: newOrder.service_id,
+            amount: Number(newOrder.amount || 0),
+            currency: newOrder.currency || 'KES',
+            paymentProvider: 'SELAR',
+            paymentStatus: 'SUCCESSFUL'
           })
         ]);
       }

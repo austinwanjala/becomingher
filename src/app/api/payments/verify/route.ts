@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { selarProvider } from '@/lib/payments/selar';
 import { store } from '@/lib/store';
 import { createAdminClient } from '@/utils/supabase/server';
-import { sendServicePdfEmail } from '@/lib/email/delivery';
+import { sendServicePdfEmail, sendAdminOrderNotificationEmail } from '@/lib/email/delivery';
 import { sendWhatsAppPostPaymentConfirmation } from '@/lib/whatsapp/notifications';
 
 export async function POST(request: Request) {
@@ -181,6 +181,25 @@ export async function POST(request: Request) {
           serviceId: order.service_id,
           serviceTitle: order.service_name,
           orderReference: order.order_reference,
+          ...(confirmedBooking ? {
+            booking: {
+              scheduledDate: confirmedBooking.scheduled_date,
+              startTime: confirmedBooking.start_time,
+              meetingLink: confirmedBooking.meeting_link || '',
+              coachName: confirmedBooking.coach_name
+            }
+          } : {})
+        }),
+        sendAdminOrderNotificationEmail({
+          orderReference: order.order_reference,
+          customerName: order.customer_name,
+          customerEmail: order.customer_email,
+          serviceTitle: order.service_name,
+          serviceId: order.service_id,
+          amount: Number(order.amount || 0),
+          currency: order.currency || 'KES',
+          paymentProvider: order.payment_provider || 'SELAR',
+          paymentStatus: order.payment_status || 'SUCCESSFUL',
           ...(confirmedBooking ? {
             booking: {
               scheduledDate: confirmedBooking.scheduled_date,

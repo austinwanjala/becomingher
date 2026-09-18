@@ -15,7 +15,12 @@ import {
   Feather,
   ExternalLink,
   Eye,
-  RefreshCw
+  RefreshCw,
+  Bell,
+  Mail,
+  Send,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { store } from '@/lib/store';
 import { BrandLogo } from '@/components/BrandLogo';
@@ -27,11 +32,16 @@ export default function AdminSettingsPage() {
   const [currency, setCurrency] = useState('KES');
   const [supportEmail, setSupportEmail] = useState('hello@becomingher.co.ke');
   const [phone, setPhone] = useState('+254 720 120 227');
+  const [adminNotificationEmail, setAdminNotificationEmail] = useState(
+    store.brand.admin_notification_email || 'hello@becomingher.co.ke'
+  );
   const [selarStoreUrl, setSelarStoreUrl] = useState('https://selar.com/m/zipporah-karanja1-Selar');
   const [defaultSelarProduct, setDefaultSelarProduct] = useState('v09683c927');
   const [holdMinutes, setHoldMinutes] = useState(15);
   const [aiTone, setAiTone] = useState('Empowering, warm, sovereign, question-driven');
   const [saved, setSaved] = useState(false);
+  const [isSendingTest, setIsSendingTest] = useState(false);
+  const [testNotificationMsg, setTestNotificationMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Logo upload state
   const [logoUrl, setLogoUrl] = useState<string>(store.brand.logo_url || '');
@@ -48,9 +58,11 @@ export default function AdminSettingsPage() {
     const cachedLogo = localStorage.getItem('becoming_her_brand_logo');
     const cachedDarkLogo = localStorage.getItem('becoming_her_brand_dark_logo');
     const cachedName = localStorage.getItem('becoming_her_brand_name');
+    const cachedAdminEmail = localStorage.getItem('becoming_her_admin_notification_email');
     if (cachedLogo) setLogoUrl(cachedLogo);
     if (cachedDarkLogo) setDarkLogoUrl(cachedDarkLogo);
     if (cachedName) setBusinessName(cachedName);
+    if (cachedAdminEmail) setAdminNotificationEmail(cachedAdminEmail);
 
     // 2. Fetch from DB
     const fetchSettings = async () => {
@@ -64,6 +76,10 @@ export default function AdminSettingsPage() {
             if (data.brand.name) setBusinessName(data.brand.name);
             if (data.brand.tagline) setTagline(data.brand.tagline);
             if (data.brand.logo_height_px) setLogoHeight(data.brand.logo_height_px);
+            if (data.brand.admin_notification_email) setAdminNotificationEmail(data.brand.admin_notification_email);
+            if (data.brand.support_email) setSupportEmail(data.brand.support_email);
+            if (data.brand.currency) setCurrency(data.brand.currency);
+            if (data.brand.phone) setPhone(data.brand.phone);
           }
         }
       } catch (err) {
@@ -140,6 +156,51 @@ export default function AdminSettingsPage() {
     setTimeout(() => setLogoNotification(null), 4000);
   };
 
+  const handleSendTestNotification = async () => {
+    setIsSendingTest(true);
+    setTestNotificationMsg(null);
+    try {
+      // First save current notification email to DB so backend uses it
+      await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          brand: {
+            name: businessName,
+            tagline,
+            logo_url: logoUrl,
+            logo_dark_url: darkLogoUrl,
+            logo_height_px: logoHeight,
+            admin_notification_email: adminNotificationEmail,
+            support_email: supportEmail,
+            currency,
+            phone
+          }
+        })
+      });
+
+      const res = await fetch('/api/admin/test-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: adminNotificationEmail })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to dispatch test notification.');
+      setTestNotificationMsg({
+        type: 'success',
+        text: `✓ Test order notification sent! Checked recipient(s): ${adminNotificationEmail}`
+      });
+    } catch (err: any) {
+      setTestNotificationMsg({
+        type: 'error',
+        text: err.message || 'Unable to send test notification.'
+      });
+    } finally {
+      setIsSendingTest(false);
+      setTimeout(() => setTestNotificationMsg(null), 6000);
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setLogoNotification('Saving settings to database...');
@@ -149,7 +210,11 @@ export default function AdminSettingsPage() {
       tagline,
       logo_url: logoUrl,
       logo_dark_url: darkLogoUrl,
-      logo_height_px: logoHeight
+      logo_height_px: logoHeight,
+      admin_notification_email: adminNotificationEmail,
+      support_email: supportEmail,
+      currency,
+      phone
     };
 
     try {
@@ -166,6 +231,7 @@ export default function AdminSettingsPage() {
     localStorage.setItem('becoming_her_brand_logo', logoUrl);
     localStorage.setItem('becoming_her_brand_dark_logo', darkLogoUrl);
     localStorage.setItem('becoming_her_brand_name', businessName);
+    localStorage.setItem('becoming_her_admin_notification_email', adminNotificationEmail);
 
     // Dispatch global event for instant reactive update in Navbar/Footer/Admin
     window.dispatchEvent(
@@ -175,7 +241,7 @@ export default function AdminSettingsPage() {
     );
 
     setSaved(true);
-    setLogoNotification('✓ All platform settings and brand logo saved & applied live across the entire website!');
+    setLogoNotification('✓ All platform settings, brand logo & notification recipients saved live!');
     setTimeout(() => {
       setSaved(false);
       setLogoNotification(null);
@@ -423,6 +489,94 @@ export default function AdminSettingsPage() {
                 className="w-full px-3 py-2 rounded-xl border border-stone-300"
               />
             </div>
+          </div>
+        </div>
+
+        {/* ========================================================================= */}
+        {/* ORDER & ENROLLMENT ADMIN NOTIFICATIONS                                    */}
+        {/* ========================================================================= */}
+        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-stone-200 shadow-sm space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 pb-4">
+            <div className="space-y-0.5">
+              <h3 className="font-serif text-base font-semibold text-stone-900 flex items-center gap-2">
+                <Bell className="w-4 h-4 text-rose-800" />
+                <span>Customer Purchase & Enrollment Alerts</span>
+              </h3>
+              <p className="text-xs text-stone-500">
+                Specify which email address(es) should receive an immediate administrative notification whenever a client purchases or enrolls in any programme, workbook, or 1-on-1 coaching session.
+              </p>
+            </div>
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-800 border border-rose-200 self-start sm:self-auto">
+              <ShieldCheck className="w-3 h-3 text-rose-800" /> Real-time Alerting
+            </span>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="font-medium text-stone-900 flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-stone-500" />
+                <span>Admin Notification Recipient Email(s)</span>
+              </label>
+              <input
+                type="text"
+                value={adminNotificationEmail}
+                onChange={(e) => setAdminNotificationEmail(e.target.value)}
+                placeholder="e.g. hello@becomingher.co.ke, zipporah@becomingher.co.ke"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:ring-2 focus:ring-rose-900/20"
+              />
+              <p className="text-[11px] text-stone-500">
+                Multiple email addresses can be entered separated by commas (e.g. <code className="bg-stone-100 px-1 py-0.5 rounded text-stone-700">admin@becomingher.co.ke, coach@becomingher.co.ke</code>).
+              </p>
+            </div>
+
+            {/* Test Email Dispatch Card */}
+            <div className="p-4 rounded-2xl bg-stone-50/80 border border-stone-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <p className="font-semibold text-stone-800 text-xs flex items-center gap-1.5">
+                  <Send className="w-3.5 h-3.5 text-stone-600" />
+                  <span>Verify Notification Delivery</span>
+                </p>
+                <p className="text-[11px] text-stone-500">
+                  Send a simulated order and enrollment confirmation alert to verify that notification emails land in your inbox.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSendTestNotification}
+                disabled={isSendingTest || !adminNotificationEmail}
+                className="px-4 py-2 rounded-xl bg-white border border-stone-300 hover:border-stone-400 text-stone-800 hover:text-stone-900 text-xs font-semibold shadow-xs transition flex items-center gap-1.5 shrink-0 disabled:opacity-50"
+              >
+                {isSendingTest ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-500" />
+                    <span>Sending Test...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-3.5 h-3.5 text-rose-800" />
+                    <span>Send Test Notification</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {testNotificationMsg && (
+              <div
+                className={`p-3.5 rounded-xl border text-xs flex items-center gap-2.5 animate-in fade-in ${
+                  testNotificationMsg.type === 'success'
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                    : 'bg-rose-50 border-rose-200 text-rose-900'
+                }`}
+              >
+                {testNotificationMsg.type === 'success' ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-rose-700 shrink-0" />
+                )}
+                <span>{testNotificationMsg.text}</span>
+              </div>
+            )}
           </div>
         </div>
 

@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
     // If no settings exist yet or they are empty objects (seeded as {}), return default store settings
     const settings = {
-      brand: dbBrand && Object.keys(dbBrand).length > 0 ? dbBrand : store.brand,
+      brand: dbBrand && Object.keys(dbBrand).length > 0 ? { ...store.brand, ...dbBrand } : store.brand,
       cms: dbCms && Object.keys(dbCms).length > 0 ? dbCms : store.cms
     };
 
