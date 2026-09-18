@@ -690,6 +690,7 @@ export interface SendAdminOrderNotificationParams {
     coachName?: string;
   };
   isTest?: boolean;
+  adminEmailOverride?: string;
 }
 
 /**
@@ -710,26 +711,29 @@ export async function sendAdminOrderNotificationEmail(
     paymentProvider = 'SELAR',
     paymentStatus = 'SUCCESSFUL',
     booking,
-    isTest = false
+    isTest = false,
+    adminEmailOverride
   } = params;
 
   const brandName = store.brand?.name || 'Becoming Her';
   const currentYear = new Date().getFullYear();
 
-  // 1. Resolve admin notification email address(es) from DB site_settings, env, or fallback
-  let configuredEmails = '';
-  try {
-    const adminSupabase = await createAdminClient();
-    const { data: settingsData } = await adminSupabase
-      .from('site_settings')
-      .select('brand')
-      .eq('id', 'global')
-      .single();
-    if (settingsData?.brand?.admin_notification_email) {
-      configuredEmails = settingsData.brand.admin_notification_email;
+  // 1. Resolve admin notification email address(es) from override, DB site_settings, env, or fallback
+  let configuredEmails = adminEmailOverride || '';
+  if (!configuredEmails) {
+    try {
+      const adminSupabase = await createAdminClient();
+      const { data: settingsData } = await adminSupabase
+        .from('site_settings')
+        .select('brand')
+        .eq('id', 'global')
+        .single();
+      if (settingsData?.brand?.admin_notification_email) {
+        configuredEmails = settingsData.brand.admin_notification_email;
+      }
+    } catch (err) {
+      console.warn('Could not read admin_notification_email from site_settings:', err);
     }
-  } catch (err) {
-    console.warn('Could not read admin_notification_email from site_settings:', err);
   }
 
   if (!configuredEmails) {
