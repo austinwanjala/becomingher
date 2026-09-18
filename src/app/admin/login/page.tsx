@@ -60,7 +60,9 @@ export default function AdminLoginPage({
               <div className="p-3.5 rounded-xl bg-rose-950/60 border border-rose-800/60 text-rose-200 flex items-start gap-2.5 text-xs leading-relaxed animate-in fade-in">
                 <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <span className="font-semibold block mb-0.5">Authentication Alert</span>
+                  <span className="font-semibold block mb-0.5">
+                    {message.toLowerCase().includes('access rights') ? 'Access Restricted' : 'Authentication Alert'}
+                  </span>
                   <span>{message}</span>
                 </div>
               </div>

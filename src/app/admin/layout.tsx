@@ -56,7 +56,7 @@ export default async function AdminLayout({
     redirect(
       '/admin/login?message=' +
         encodeURIComponent(
-          'Access Denied: Your account is registered as a Customer. Only users created as Administrators can access the administrative portal.'
+          "You don't have access rights"
         )
     );
   }

@@ -15,13 +15,31 @@ import {
 } from 'lucide-react';
 import { store } from '@/lib/store';
 import { getSettings } from '@/utils/settings';
+import { createAdminClient } from '@/utils/supabase/server';
 
 export default async function AdminOverviewPage() {
   const services = store.getServices();
-  const orders = store.orders;
-  const bookings = store.bookings;
-  const entitlements = store.entitlements;
   const { cms } = await getSettings();
+
+  let orders = store.orders;
+  let bookings: any[] = [];
+  let entitlements = store.entitlements;
+
+  try {
+    const admin = await createAdminClient();
+    const [{ data: dbOrders }, { data: dbBookings }, { data: dbEntitlements }] = await Promise.all([
+      admin.from('orders').select('*').order('created_at', { ascending: false }),
+      admin.from('bookings').select('*').order('created_at', { ascending: false }),
+      admin.from('entitlements').select('*')
+    ]);
+
+    if (dbOrders && dbOrders.length > 0) orders = dbOrders;
+    if (dbBookings) bookings = dbBookings;
+    if (dbEntitlements && dbEntitlements.length > 0) entitlements = dbEntitlements;
+  } catch (err) {
+    console.error('Error loading overview data from Supabase:', err);
+    bookings = store.bookings;
+  }
 
   const totalRevenue = orders
     .filter((o) => o.payment_status === 'SUCCESSFUL')

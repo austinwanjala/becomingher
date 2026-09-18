@@ -6,7 +6,7 @@ import { createAdminClient } from '@/utils/supabase/server';
 export async function POST(req: NextRequest) {
   try {
     const data = await req.json();
-    const { bookingId } = data;
+    const { bookingId, isUpdatedLink, meetingLink } = data;
 
     if (!bookingId) {
       return NextResponse.json({ error: 'Missing booking ID' }, { status: 400 });
@@ -47,7 +47,6 @@ export async function POST(req: NextRequest) {
         order_reference: booking.id
       };
     }
-
     const emailResult = await sendServicePdfEmail({
       customerEmail: order.customer_email,
       customerName: order.customer_name,
@@ -57,8 +56,10 @@ export async function POST(req: NextRequest) {
       booking: {
         scheduledDate: booking.scheduled_date,
         startTime: booking.start_time,
-        meetingLink: booking.meeting_link || '',
-        coachName: booking.coach_name
+        meetingLink: meetingLink || booking.meeting_link || '',
+        coachName: booking.coach_name,
+        isResend: true,
+        isUpdatedLink: Boolean(isUpdatedLink ?? true)
       }
     });
 

@@ -9,16 +9,18 @@ import {
   AlertCircle,
   Edit2,
   Save,
-  Plus,
   ShieldCheck,
   ExternalLink,
   Mail,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Search,
+  Filter,
+  CalendarCheck,
+  UserCheck
 } from 'lucide-react';
 import { store } from '@/lib/store';
 import { Booking } from '@/types';
-import { createClient } from '@/utils/supabase/client';
 
 export default function AdminBookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -26,30 +28,28 @@ export default function AdminBookingsPage() {
   const [coach, setCoach] = useState(store.coach);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [manualMeetingLink, setManualMeetingLink] = useState('');
+  const [isSavingLink, setIsSavingLink] = useState(false);
   const [isResending, setIsResending] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'CONFIRMED' | 'PENDING' | 'CANCELLED'>('ALL');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [notifyCustomerOnSave, setNotifyCustomerOnSave] = useState(true);
 
   const fetchBookings = async () => {
     setLoading(true);
+    setErrorMessage(null);
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching bookings from Supabase:', error);
-        setBookings(store.bookings);
-      } else if (data && data.length > 0) {
-        // Map database bookings
-        setBookings(data as Booking[]);
-      } else {
-        // Fallback to store bookings if none in DB
-        setBookings(store.bookings);
+      const res = await fetch('/api/admin/bookings');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${res.status}: Failed to fetch bookings`);
       }
-    } catch (err) {
+      const data = await res.json();
+      setBookings(data.bookings || []);
+    } catch (err: any) {
       console.error('Error loading bookings:', err);
-      setBookings(store.bookings);
+      setErrorMessage(err.message || 'Failed to load bookings from database.');
+      setBookings([]);
     } finally {
       setLoading(false);
     }
@@ -61,7 +61,9 @@ export default function AdminBookingsPage() {
 
   const startEditMeetingLink = (booking: Booking) => {
     setEditingBooking(booking);
-    setManualMeetingLink(booking.meeting_link || `https://meet.google.com/bch-${Math.random().toString(36).substring(2, 6)}`);
+    setManualMeetingLink(
+      booking.meeting_link || `https://meet.google.com/bch-${Math.random().toString(36).substring(2, 6)}`
+    );
   };
 
   const saveMeetingLink = async (e: React.FormEvent) => {
@@ -69,36 +71,75 @@ export default function AdminBookingsPage() {
     if (!editingBooking) return;
 
     try {
-      const supabase = createClient();
-      await supabase
-        .from('bookings')
-        .update({
+      setIsSavingLink(true);
+      const res = await fetch('/api/admin/bookings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingBooking.id,
           meeting_link: manualMeetingLink,
           booking_status: 'CONFIRMED'
         })
-        .eq('id', editingBooking.id);
+      });
 
-      editingBooking.meeting_link = manualMeetingLink;
-      editingBooking.booking_status = 'CONFIRMED';
-      setBookings([...bookings]);
-      store.addAuditLog('BOOKING_MEETING_LINK_UPDATED', 'BOOKINGS', `Meeting link set for booking ${editingBooking.id}`);
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update meeting link');
+      }
+
+      // If requested, immediately notify the customer with the updated link email
+      let emailNotice = '';
+      if (notifyCustomerOnSave) {
+        try {
+          const emailRes = await fetch('/api/admin/resend-booking-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              bookingId: editingBooking.id,
+              isUpdatedLink: true,
+              meetingLink: manualMeetingLink
+            })
+          });
+          if (emailRes.ok) {
+            emailNotice = ' and notification email with the updated link was sent to customer!';
+          }
+        } catch (emailErr) {
+          console.warn('Failed to auto-dispatch updated link email:', emailErr);
+        }
+      }
+
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.id === editingBooking.id
+            ? { ...b, meeting_link: manualMeetingLink, booking_status: 'CONFIRMED' }
+            : b
+        )
+      );
       setEditingBooking(null);
+      alert(`Meeting link successfully updated${emailNotice || '!'}`);
     } catch (err: any) {
       alert(`Error updating meeting link: ${err.message}`);
+    } finally {
+      setIsSavingLink(false);
     }
   };
 
   const resendEmail = async (id: string) => {
     try {
       setIsResending(id);
+      const targetBooking = bookings.find((b) => b.id === id);
       const res = await fetch('/api/admin/resend-booking-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId: id })
+        body: JSON.stringify({
+          bookingId: id,
+          isUpdatedLink: true,
+          meetingLink: targetBooking?.meeting_link
+        })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to resend email');
-      alert('Email successfully resent to customer!');
+      alert('Email with updated meeting link successfully resent to customer!');
     } catch (err: any) {
       alert(`Error resending email: ${err.message}`);
     } finally {
@@ -107,34 +148,73 @@ export default function AdminBookingsPage() {
   };
 
   const cancelBooking = async (id: string) => {
-    const confirm = window.confirm('Cancel this booking? Customer will be notified.');
+    const confirm = window.confirm('Are you sure you want to cancel this booking?');
     if (!confirm) return;
 
     try {
-      const supabase = createClient();
-      await supabase
-        .from('bookings')
-        .update({ booking_status: 'CANCELLED' })
-        .eq('id', id);
+      const res = await fetch('/api/admin/bookings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id,
+          booking_status: 'CANCELLED'
+        })
+      });
 
-      const updated = bookings.map((b) => (b.id === id ? { ...b, booking_status: 'CANCELLED' as const } : b));
-      setBookings(updated);
-      store.bookings = updated;
-      store.addAuditLog('BOOKING_CANCELLED', 'BOOKINGS', `Booking ${id} cancelled by admin.`);
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to cancel booking');
+      }
+
+      setBookings((prev) =>
+        prev.map((b) => (b.id === id ? { ...b, booking_status: 'CANCELLED' } : b))
+      );
+      alert('Booking marked as CANCELLED.');
     } catch (err: any) {
       alert(`Error cancelling booking: ${err.message}`);
     }
   };
 
+  const filteredBookings = bookings.filter((b) => {
+    const matchesStatus =
+      statusFilter === 'ALL' || b.booking_status?.toUpperCase() === statusFilter;
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch =
+      !q ||
+      b.customer_name?.toLowerCase().includes(q) ||
+      b.customer_email?.toLowerCase().includes(q) ||
+      b.id?.toLowerCase().includes(q) ||
+      b.order_id?.toLowerCase().includes(q) ||
+      b.notes?.toLowerCase().includes(q);
+
+    return matchesStatus && matchesSearch;
+  });
+
+  const confirmedCount = bookings.filter((b) => b.booking_status === 'CONFIRMED').length;
+  const pendingCount = bookings.filter((b) => b.booking_status === 'PENDING').length;
+  const cancelledCount = bookings.filter((b) => b.booking_status === 'CANCELLED').length;
+
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="font-serif text-3xl font-semibold text-stone-900">
-          Coaching Calendar & Bookings Manager
-        </h1>
-        <p className="text-xs sm:text-sm text-stone-600">
-          Inspect client appointments, manage coach availability hours, and generate or override Google Meet links.
-        </p>
+      {/* Top Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-3xl font-semibold text-stone-900">
+            Coaching Calendar & Bookings Manager
+          </h1>
+          <p className="text-xs sm:text-sm text-stone-600">
+            Real-time client appointments, coach availability hours, and Google Meet video links.
+          </p>
+        </div>
+
+        <button
+          onClick={fetchBookings}
+          disabled={loading}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-stone-200 text-stone-800 text-xs font-semibold hover:bg-stone-50 transition shadow-sm self-start sm:self-auto"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-rose-800' : 'text-stone-500'}`} />
+          <span>{loading ? 'Refreshing...' : 'Refresh List'}</span>
+        </button>
       </div>
 
       {/* Coach Availability Overview Card */}
@@ -174,105 +254,218 @@ export default function AdminBookingsPage() {
 
       {/* Bookings Ledger */}
       <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-stone-100 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h3 className="font-serif text-lg font-semibold text-stone-900">Session Bookings</h3>
-            <button
-              onClick={fetchBookings}
-              disabled={loading}
-              className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition"
-              title="Refresh Bookings"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            </button>
+        {/* Ledger Header with Stats & Filter */}
+        <div className="p-6 border-b border-stone-100 space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <h3 className="font-serif text-lg font-semibold text-stone-900">Live Client Bookings</h3>
+              <span className="text-xs text-stone-500 font-medium bg-stone-100 px-2.5 py-1 rounded-full">
+                {bookings.length} {bookings.length === 1 ? 'Booking' : 'Bookings'}
+              </span>
+            </div>
+
+            {/* Status Filter Tabs */}
+            <div className="flex items-center gap-1.5 bg-stone-100 p-1 rounded-xl text-xs font-medium text-stone-600 self-start md:self-auto">
+              <button
+                onClick={() => setStatusFilter('ALL')}
+                className={`px-3 py-1.5 rounded-lg transition ${
+                  statusFilter === 'ALL'
+                    ? 'bg-white text-stone-900 shadow-sm font-semibold'
+                    : 'hover:text-stone-900'
+                }`}
+              >
+                All ({bookings.length})
+              </button>
+              <button
+                onClick={() => setStatusFilter('CONFIRMED')}
+                className={`px-3 py-1.5 rounded-lg transition ${
+                  statusFilter === 'CONFIRMED'
+                    ? 'bg-white text-emerald-800 shadow-sm font-semibold'
+                    : 'hover:text-stone-900'
+                }`}
+              >
+                Confirmed ({confirmedCount})
+              </button>
+              <button
+                onClick={() => setStatusFilter('PENDING')}
+                className={`px-3 py-1.5 rounded-lg transition ${
+                  statusFilter === 'PENDING'
+                    ? 'bg-white text-amber-800 shadow-sm font-semibold'
+                    : 'hover:text-stone-900'
+                }`}
+              >
+                Pending ({pendingCount})
+              </button>
+              <button
+                onClick={() => setStatusFilter('CANCELLED')}
+                className={`px-3 py-1.5 rounded-lg transition ${
+                  statusFilter === 'CANCELLED'
+                    ? 'bg-white text-rose-800 shadow-sm font-semibold'
+                    : 'hover:text-stone-900'
+                }`}
+              >
+                Cancelled ({cancelledCount})
+              </button>
+            </div>
           </div>
-          <span className="text-xs text-stone-500 font-medium">
-            {loading ? 'Refreshing...' : `${bookings.length} Bookings`}
-          </span>
+
+          {/* Search bar */}
+          <div className="relative">
+            <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search by client name, email, booking reference, or notes..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-stone-200 bg-stone-50/50 text-xs text-stone-900 placeholder:text-stone-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-800/20 focus:border-rose-800 transition"
+            />
+          </div>
         </div>
 
+        {/* Error Alert if any */}
+        {errorMessage && (
+          <div className="p-4 mx-6 my-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
+
+        {/* Bookings List */}
         <div className="divide-y divide-stone-100 text-xs">
-          {loading && bookings.length === 0 && (
-            <div className="p-12 text-center text-stone-400 space-y-2">
+          {loading && (
+            <div className="p-16 text-center text-stone-400 space-y-2">
               <Loader2 className="w-6 h-6 animate-spin mx-auto text-rose-800" />
-              <p>Loading bookings from database...</p>
+              <p>Fetching appointments from database...</p>
             </div>
           )}
-          {bookings.map((b) => {
-            const isConfirmed = b.booking_status === 'CONFIRMED';
 
-            return (
-              <div
-                key={b.id}
-                className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:bg-stone-50/50 transition"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`text-[10px] font-semibold px-2 py-0.5 rounded uppercase tracking-wider ${
-                        isConfirmed ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
-                      }`}
-                    >
-                      {b.booking_status}
-                    </span>
-                    <span className="text-stone-400 font-mono text-[11px]">{b.id}</span>
-                  </div>
-
-                  <div>
-                    <h4 className="font-serif text-base font-semibold text-stone-900">
-                      {b.customer_name} ({b.customer_email})
-                    </h4>
-                    {b.notes && <p className="text-stone-500 italic mt-0.5">Note: "{b.notes}"</p>}
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-4 text-stone-600">
-                    <span className="flex items-center gap-1 font-medium text-stone-900">
-                      <CalendarIcon className="w-3.5 h-3.5 text-rose-800" /> {b.scheduled_date}
-                    </span>
-                    <span className="flex items-center gap-1 font-medium text-stone-900">
-                      <Clock className="w-3.5 h-3.5 text-rose-800" /> {b.start_time} - {b.end_time} ({b.timezone})
-                    </span>
-                  </div>
-
-                  {b.meeting_link && (
-                    <div className="pt-1 flex items-center gap-2 text-[11px] text-emerald-700">
-                      <Video className="w-3.5 h-3.5" />
-                      <a href={b.meeting_link} target="_blank" rel="noopener noreferrer" className="underline font-mono">
-                        {b.meeting_link}
-                      </a>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => startEditMeetingLink(b)}
-                    className="px-3.5 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-medium transition"
-                  >
-                    Edit Meeting Link
-                  </button>
-                  
-                  <button
-                    onClick={() => resendEmail(b.id)}
-                    disabled={isResending === b.id}
-                    className="px-3.5 py-2 rounded-xl bg-stone-100 hover:bg-rose-50 text-rose-800 text-xs font-medium transition flex items-center gap-1 disabled:opacity-50"
-                  >
-                    {isResending === b.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
-                    Resend Email
-                  </button>
-
-                  {b.booking_status !== 'CANCELLED' && (
-                    <button
-                      onClick={() => cancelBooking(b.id)}
-                      className="px-3.5 py-2 rounded-xl border border-stone-200 text-rose-700 hover:bg-rose-50 text-xs font-medium transition"
-                    >
-                      Cancel
-                    </button>
-                  )}
-                </div>
+          {!loading && filteredBookings.length === 0 && (
+            <div className="p-16 text-center text-stone-400 space-y-3">
+              <div className="w-12 h-12 rounded-full bg-stone-50 text-stone-400 mx-auto flex items-center justify-center border border-stone-200">
+                <CalendarCheck className="w-6 h-6" />
               </div>
-            );
-          })}
+              <div>
+                <h4 className="font-serif text-base font-semibold text-stone-800">
+                  {searchQuery || statusFilter !== 'ALL'
+                    ? 'No matching bookings found'
+                    : 'No Client Bookings Yet'}
+                </h4>
+                <p className="text-xs text-stone-500 max-w-sm mx-auto mt-1">
+                  {searchQuery || statusFilter !== 'ALL'
+                    ? 'Try clearing your search query or switching status filters.'
+                    : 'When clients book a 1-on-1 session or custom coaching appointment, their live bookings will appear here.'}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {!loading &&
+            filteredBookings.map((b) => {
+              const isConfirmed = b.booking_status === 'CONFIRMED';
+              const isCancelled = b.booking_status === 'CANCELLED';
+
+              return (
+                <div
+                  key={b.id}
+                  className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:bg-stone-50/50 transition"
+                >
+                  <div className="space-y-2.5">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded uppercase tracking-wider ${
+                          isConfirmed
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : isCancelled
+                            ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                            : 'bg-amber-50 text-amber-700 border border-amber-200'
+                        }`}
+                      >
+                        {b.booking_status || 'CONFIRMED'}
+                      </span>
+                      <span className="text-stone-400 font-mono text-[11px]">{b.id}</span>
+                      {b.order_id && (
+                        <span className="text-[10px] text-stone-400 font-mono bg-stone-100 px-1.5 py-0.5 rounded">
+                          Order: {b.order_id}
+                        </span>
+                      )}
+                    </div>
+
+                    <div>
+                      <h4 className="font-serif text-base font-semibold text-stone-900">
+                        {b.customer_name || 'Client'}{' '}
+                        <span className="font-sans text-xs text-stone-500 font-normal">
+                          ({b.customer_email || 'No email provided'})
+                        </span>
+                      </h4>
+                      {b.notes && (
+                        <p className="text-stone-600 italic mt-0.5 bg-stone-50 p-2 rounded-xl border border-stone-100">
+                          &ldquo;{b.notes}&rdquo;
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-4 text-stone-600">
+                      <span className="flex items-center gap-1 font-medium text-stone-900">
+                        <CalendarIcon className="w-3.5 h-3.5 text-rose-800" /> {b.scheduled_date}
+                      </span>
+                      <span className="flex items-center gap-1 font-medium text-stone-900">
+                        <Clock className="w-3.5 h-3.5 text-rose-800" /> {b.start_time} - {b.end_time} ({b.timezone || 'EAT'})
+                      </span>
+                      {b.coach_name && (
+                        <span className="flex items-center gap-1 text-stone-500">
+                          <UserCheck className="w-3.5 h-3.5 text-stone-400" /> Coach: {b.coach_name}
+                        </span>
+                      )}
+                    </div>
+
+                    {b.meeting_link && (
+                      <div className="pt-1 flex items-center gap-2 text-[11px] text-emerald-800">
+                        <Video className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <a
+                          href={b.meeting_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline font-mono text-emerald-800 hover:text-emerald-950 truncate max-w-md"
+                        >
+                          {b.meeting_link}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => startEditMeetingLink(b)}
+                      className="px-3.5 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-medium transition"
+                    >
+                      {b.meeting_link ? 'Edit Meeting Link' : 'Set Meeting Link'}
+                    </button>
+
+                    <button
+                      onClick={() => resendEmail(b.id)}
+                      disabled={isResending === b.id}
+                      className="px-3.5 py-2 rounded-xl bg-stone-100 hover:bg-rose-50 text-rose-800 text-xs font-medium transition flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      {isResending === b.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Mail className="w-3.5 h-3.5" />
+                      )}
+                      <span>Resend Email</span>
+                    </button>
+
+                    {!isCancelled && (
+                      <button
+                        onClick={() => cancelBooking(b.id)}
+                        className="px-3.5 py-2 rounded-xl border border-stone-200 text-rose-700 hover:bg-rose-50 text-xs font-medium transition"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
         </div>
       </div>
 
@@ -284,7 +477,8 @@ export default function AdminBookingsPage() {
               Configure Video Meeting Link
             </h3>
             <p className="text-xs text-stone-500">
-              Set the Google Meet or video conferencing URL for this session.
+              Set the Google Meet or video conferencing URL for client{' '}
+              <strong>{editingBooking.customer_name}</strong>.
             </p>
 
             <form onSubmit={saveMeetingLink} className="space-y-4 text-xs">
@@ -295,24 +489,39 @@ export default function AdminBookingsPage() {
                   required
                   value={manualMeetingLink}
                   onChange={(e) => setManualMeetingLink(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 font-mono text-xs"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 font-mono text-xs focus:ring-2 focus:ring-rose-800/20 focus:border-rose-800 outline-none"
                   placeholder="https://meet.google.com/..."
                 />
               </div>
 
+              <label className="flex items-center gap-2.5 text-stone-700 cursor-pointer pt-1 bg-rose-50/60 p-3 rounded-xl border border-rose-200/60">
+                <input
+                  type="checkbox"
+                  checked={notifyCustomerOnSave}
+                  onChange={(e) => setNotifyCustomerOnSave(e.target.checked)}
+                  className="rounded border-stone-300 text-rose-800 focus:ring-rose-800 h-4 w-4"
+                />
+                <span className="text-xs font-medium text-rose-950">
+                  Email updated meeting link to client immediately
+                </span>
+              </label>
+
               <div className="flex justify-end gap-3 pt-4 border-t border-stone-100">
                 <button
                   type="button"
+                  disabled={isSavingLink}
                   onClick={() => setEditingBooking(null)}
-                  className="px-4 py-2 rounded-xl text-stone-600 hover:bg-stone-100"
+                  className="px-4 py-2 rounded-xl text-stone-600 hover:bg-stone-100 transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-stone-900 text-white font-semibold hover:bg-rose-950 shadow"
+                  disabled={isSavingLink}
+                  className="px-5 py-2.5 rounded-xl bg-stone-900 text-white font-semibold hover:bg-rose-950 shadow transition flex items-center gap-1.5"
                 >
-                  Save Meeting Link
+                  {isSavingLink && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>{isSavingLink ? 'Saving...' : 'Save Meeting Link'}</span>
                 </button>
               </div>
             </form>

@@ -44,9 +44,7 @@ export async function adminLogin(formData: FormData) {
     await supabase.auth.signOut()
 
     redirect(
-      `/admin/login?message=${encodeURIComponent(
-        `Access Denied: Account '${email}' is currently registered as a Customer. To grant administrator rights, set role to 'ADMIN' in Supabase, or add this email to ADMIN_EMAILS in .env.local.`
-      )}&redirect=${encodeURIComponent(redirectTarget)}`
+      `/admin/login?message=${encodeURIComponent("You don't have access rights")}&redirect=${encodeURIComponent(redirectTarget)}`
     )
   }
 

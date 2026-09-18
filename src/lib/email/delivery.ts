@@ -19,12 +19,15 @@ export interface SendServicePdfEmailParams {
   pdfUrl?: string;
   pdfName?: string;
   pdfTitle?: string;
+  questionnaireUrl?: string;
   resources?: ServiceResource[];
   booking?: {
     scheduledDate: string;
     startTime: string;
     meetingLink: string;
     coachName?: string;
+    isResend?: boolean;
+    isUpdatedLink?: boolean;
   };
 }
 
@@ -66,7 +69,10 @@ function buildServicePdfEmailHtml({
   pdfName,
   downloadUrl,
   resources,
-  booking
+  booking,
+  isCustomizedService,
+  questionnaireUrl,
+  dashboardUploadUrl
 }: {
   customerName: string;
   serviceTitle: string;
@@ -80,7 +86,12 @@ function buildServicePdfEmailHtml({
     startTime: string;
     meetingLink: string;
     coachName?: string;
+    isResend?: boolean;
+    isUpdatedLink?: boolean;
   };
+  isCustomizedService?: boolean;
+  questionnaireUrl?: string;
+  dashboardUploadUrl?: string;
 }) {
   const brandName = store.brand?.name || 'Becoming Her';
   const currentYear = new Date().getFullYear();
@@ -123,30 +134,112 @@ function buildServicePdfEmailHtml({
               </p>
 
               ${booking ? `
-              <div style="background-color: #fce7f3; border: 1px solid #fbcfe8; border-radius: 8px; padding: 24px; margin: 30px 0;">
-                <h3 style="margin-top: 0; margin-bottom: 15px; color: #831843; font-size: 18px; font-weight: 600;">Your Upcoming Session</h3>
-                <table style="width: 100%; border-collapse: collapse;">
+              <div style="background-color: #fdf2f8; border: 2px solid ${booking.isUpdatedLink || booking.isResend ? '#059669' : '#fbcfe8'}; border-radius: 16px; padding: 26px; margin: 28px 0; box-shadow: 0 4px 14px ${booking.isUpdatedLink || booking.isResend ? 'rgba(5, 150, 105, 0.12)' : 'rgba(0, 0, 0, 0.04)'};">
+                
+                ${booking.isUpdatedLink || booking.isResend ? `
+                <!-- Prominent Updated Link Alert Callout -->
+                <div style="background-color: #ecfdf5; border: 1.5px solid #10b981; border-radius: 12px; padding: 14px 18px; margin-bottom: 20px;">
+                  <span style="display: inline-block; background-color: #059669; color: #ffffff; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; padding: 4px 10px; border-radius: 9999px;">
+                    🔔 Updated Video Meeting Link
+                  </span>
+                  <p style="margin: 10px 0 0; font-size: 13px; color: #065f46; line-height: 1.5; font-weight: 600;">
+                    Your coaching session video meeting link has been updated. Please connect to your upcoming 1-on-1 session with Lead Coach Zipporah using the new link highlighted below.
+                  </p>
+                </div>
+                ` : ''}
+
+                <h3 style="margin-top: 0; margin-bottom: 16px; color: #831843; font-size: 19px; font-weight: 700; font-family: Georgia, serif;">
+                  ${booking.isUpdatedLink || booking.isResend ? 'Your Session Schedule & Updated Meeting Link' : 'Your Upcoming Session'}
+                </h3>
+                
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
                   <tr>
-                    <td style="padding: 8px 0; border-bottom: 1px solid #fbcfe8; color: #831843; font-weight: 500; width: 120px;">Date & Time</td>
-                    <td style="padding: 8px 0; border-bottom: 1px solid #fbcfe8; color: #4c0519;">${booking.scheduledDate} at ${booking.startTime}</td>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #fbcfe8; color: #831843; font-weight: 600; width: 140px; font-size: 13px;">Date &amp; Time</td>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #fbcfe8; color: #4c0519; font-size: 13px; font-weight: 500;">${booking.scheduledDate} at ${booking.startTime}</td>
                   </tr>
                   ${booking.coachName ? `
                   <tr>
-                    <td style="padding: 8px 0; border-bottom: 1px solid #fbcfe8; color: #831843; font-weight: 500;">Coach</td>
-                    <td style="padding: 8px 0; border-bottom: 1px solid #fbcfe8; color: #4c0519;">${booking.coachName}</td>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #fbcfe8; color: #831843; font-weight: 600; font-size: 13px;">Lead Coach</td>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #fbcfe8; color: #4c0519; font-size: 13px;">${booking.coachName}</td>
                   </tr>
                   ` : ''}
                   <tr>
-                    <td style="padding: 8px 0; color: #831843; font-weight: 500;">Meeting Link</td>
-                    <td style="padding: 8px 0;">
-                      <a href="${booking.meetingLink}" style="color: #9f1239; text-decoration: underline;">Join Video Call</a>
+                    <td style="padding: 12px 0 8px; color: #831843; font-weight: 600; font-size: 13px; vertical-align: top;">
+                      ${booking.isUpdatedLink || booking.isResend ? 'Updated Meeting Link' : 'Meeting Link'}
+                    </td>
+                    <td style="padding: 12px 0 8px;">
+                      ${booking.isUpdatedLink || booking.isResend ? `
+                      <div style="background-color: #ffffff; border: 2px solid #059669; border-radius: 12px; padding: 14px 16px; margin-bottom: 8px; box-shadow: 0 2px 6px rgba(5, 150, 105, 0.08);">
+                        <span style="display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #059669; margin-bottom: 4px;">
+                          ✅ Current Active Link:
+                        </span>
+                        <a href="${booking.meetingLink}" target="_blank" style="color: #047857; font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 14px; font-weight: bold; text-decoration: underline; word-break: break-all;">
+                          ${booking.meetingLink}
+                        </a>
+                      </div>
+                      ` : `
+                      <a href="${booking.meetingLink}" target="_blank" style="color: #9f1239; font-family: monospace; font-size: 13px; text-decoration: underline; word-break: break-all;">
+                        ${booking.meetingLink}
+                      </a>
+                      `}
                     </td>
                   </tr>
                 </table>
-                <p style="margin-top: 15px; margin-bottom: 0; font-size: 13px; color: #831843; opacity: 0.8;">
-                  Please ensure you are in a quiet, private space at the time of our session.
+
+                <!-- Call to Action Button -->
+                <div style="margin: 16px 0 10px;">
+                  <a href="${booking.meetingLink}" target="_blank" style="display: inline-block; background-color: ${booking.isUpdatedLink || booking.isResend ? '#059669' : '#9f1239'}; color: #ffffff; text-decoration: none; padding: 13px 26px; border-radius: 12px; font-size: 13px; font-weight: 700; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+                    🎥 ${booking.isUpdatedLink || booking.isResend ? 'Join Session with Updated Link &rarr;' : 'Join Video Call &rarr;'}
+                  </a>
+                </div>
+
+                <p style="margin-top: 12px; margin-bottom: 0; font-size: 12px; color: #831843; opacity: 0.85;">
+                  Please ensure you are in a quiet, private space at the time of our session. You can join directly from your browser or mobile phone.
                 </p>
               </div>
+              ` : ''}
+
+              ${isCustomizedService && questionnaireUrl ? `
+              <!-- Required Assessment Questionnaire Notice for Customized Coaching -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #fff1f2; border: 2px solid #fda4af; border-radius: 16px; margin: 24px 0; padding: 22px;">
+                <tr>
+                  <td>
+                    <p style="margin: 0 0 6px;">
+                      <span style="display: inline-block; background-color: #9f1239; color: #ffffff; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; padding: 4px 10px; border-radius: 9999px;">
+                        Action Required: Onboarding Assessment
+                      </span>
+                    </p>
+                    <h3 style="margin: 6px 0 10px; font-family: Georgia, serif; font-size: 18px; color: #881337;">
+                      Personalized Life Assessment Questionnaire
+                    </h3>
+                    <p style="margin: 0 0 12px; font-size: 13px; color: #4c0519; line-height: 1.6;">
+                      Because you have enrolled in the <strong>${serviceTitle}</strong>, your entire coaching journey is uniquely tailored to you. Lead Coach Zipporah crafts your personalized reflections, curriculum, and milestones based directly on your life assessment responses.
+                    </p>
+                    <div style="background-color: #ffffff; border-left: 4px solid #be185d; border-radius: 8px; padding: 14px 16px; margin: 14px 0;">
+                      <p style="margin: 0; font-size: 13px; color: #831843; font-weight: 600; line-height: 1.6;">
+                        📝 <strong>Next Step:</strong> Please download the questionnaire template below, fill it in thoroughly with your personal reflections and goals, and <strong>reupload the completed file</strong> to your Member Dashboard so Lead Coach Zipporah can formulate your tailored roadmap.
+                      </p>
+                    </div>
+                    <table cellpadding="0" cellspacing="0" style="margin-top: 14px;">
+                      <tr>
+                        <td style="padding-right: 10px; padding-bottom: 8px;">
+                          <a href="${questionnaireUrl}" target="_blank" style="display: inline-block; background-color: #9f1239; color: #ffffff; text-decoration: none; padding: 11px 20px; border-radius: 10px; font-size: 12px; font-weight: 600; text-align: center; box-shadow: 0 2px 6px rgba(159, 18, 57, 0.25);">
+                            📥 Download Questionnaire Template
+                          </a>
+                        </td>
+                        <td style="padding-bottom: 8px;">
+                          <a href="${dashboardUploadUrl || 'https://becomingher.co.ke/dashboard'}" target="_blank" style="display: inline-block; background-color: #ffffff; border: 1.5px solid #9f1239; color: #9f1239; text-decoration: none; padding: 10px 18px; border-radius: 10px; font-size: 12px; font-weight: 600; text-align: center;">
+                            📤 Reupload Completed File &rarr;
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                    <p style="margin: 10px 0 0; font-size: 11px; color: #9f1239; opacity: 0.9; font-style: italic;">
+                      Once uploaded to your dashboard, Lead Coach Zipporah will review your responses and personalize your curriculum modules.
+                    </p>
+                  </td>
+                </tr>
+              </table>
               ` : ''}
 
               ${downloadUrl ? `
@@ -201,7 +294,10 @@ function buildServicePdfEmailHtml({
                 Next Steps in Your Sanctuary:
               </h4>
               <ul style="margin: 0 0 24px; padding-left: 20px; font-size: 13px; color: #57534e; line-height: 1.8;">
-                <li>Sign in to your <a href="https://becomingher.co.ke/dashboard" style="color: #881337; text-decoration: underline; font-weight: 500;">Member Dashboard</a> to view your active modules.</li>
+                ${isCustomizedService && questionnaireUrl ? `
+                <li><strong style="color: #9f1239;">Fill In &amp; Reupload Questionnaire:</strong> Download the assessment questionnaire above, complete it thoroughly, and <a href="${dashboardUploadUrl || 'https://becomingher.co.ke/dashboard'}" style="color: #9f1239; font-weight: 600; text-decoration: underline;">reupload it in your Member Dashboard</a>.</li>
+                ` : ''}
+                <li>Sign in to your <a href="${dashboardUploadUrl || 'https://becomingher.co.ke/dashboard'}" style="color: #881337; text-decoration: underline; font-weight: 500;">Member Dashboard</a> to view your active modules.</li>
                 <li>Complete your personal reflection inquiries and track your growth milestones.</li>
                 <li>Engage with your personal Sanctuary Growth Companion for continuous guidance.</li>
               </ul>
@@ -244,9 +340,25 @@ function buildServicePdfEmailHtml({
 export async function sendServicePdfEmail(params: SendServicePdfEmailParams): Promise<EmailDeliveryResult> {
   const { customerEmail, customerName, serviceId, serviceTitle, orderReference } = params;
 
-  // Fetch full service object to get latest resources from DB
-  const service = await getServiceById(serviceId);
+  // Fetch full service object to get latest resources from DB or store
+  const service = (await getServiceById(serviceId)) || store.services.find(s => s.id === serviceId || s.slug === serviceId);
   const allResources = params.resources || service?.resources || [];
+
+  // Determine if this is the customized coaching service
+  const isCustomizedService =
+    serviceId === 'srv-custom-02' ||
+    service?.id === 'srv-custom-02' ||
+    service?.slug === 'custom-coaching' ||
+    service?.type === 'CUSTOM_COACHING' ||
+    serviceTitle.toLowerCase().includes('custom') ||
+    Boolean(service?.name && service.name.toLowerCase().includes('custom'));
+
+  // Resolve questionnaire URL if it exists
+  let questionnaireUrl =
+    params.questionnaireUrl ||
+    service?.questionnaire_template_url ||
+    service?.questionnaire_url ||
+    (isCustomizedService ? 'https://ssspngdzadgjehinospw.supabase.co/storage/v1/object/public/materials/questionnaires/1789587626505-1b5ozx.docx' : undefined);
 
   // Resolve PDF asset for the service
   const pdfAsset = params.pdfUrl
@@ -261,26 +373,41 @@ export async function sendServicePdfEmail(params: SendServicePdfEmailParams): Pr
 
   const resendApiKey = process.env.RESEND_API_KEY;
   const emailFrom = process.env.EMAIL_FROM || 'Becoming Her <onboarding@resend.dev>';
-  const subject = `✨ Your Becoming Her Materials: ${serviceTitle} (${orderReference})`;
 
-  // Ensure download URL is absolute if provided as relative path
+  // Ensure base URL is correctly formatted
+  let baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL || 'https://becomingher-five.vercel.app';
+  
+  // Fix common misconfiguration where NEXT_PUBLIC_APP_URL is left as localhost in production
+  if (baseUrl.includes('localhost') && process.env.VERCEL) {
+    baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL || 'becomingher-five.vercel.app';
+  }
+  
+  // Ensure protocol exists
+  if (!baseUrl.startsWith('http')) {
+    baseUrl = `https://${baseUrl}`;
+  }
+  
+  // Remove trailing slash if any
+  baseUrl = baseUrl.replace(/\/$/, '');
+
   let downloadUrl = finalPdf?.url;
   if (downloadUrl && downloadUrl.startsWith('/')) {
-    let baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL || 'https://becomingher-five.vercel.app';
-    
-    // Fix common misconfiguration where NEXT_PUBLIC_APP_URL is left as localhost in production
-    if (baseUrl.includes('localhost') && process.env.VERCEL) {
-      baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL || 'becomingher-five.vercel.app';
-    }
-    
-    // Ensure protocol exists
-    if (!baseUrl.startsWith('http')) {
-      baseUrl = `https://${baseUrl}`;
-    }
-    
-    // Remove trailing slash if any
-    baseUrl = baseUrl.replace(/\/$/, '');
     downloadUrl = `${baseUrl}${downloadUrl}`;
+  }
+
+  // Ensure questionnaire URL is absolute if provided as relative path
+  if (questionnaireUrl && questionnaireUrl.startsWith('/')) {
+    questionnaireUrl = `${baseUrl}${questionnaireUrl}`;
+  }
+
+  const dashboardUploadUrl = `${baseUrl}/dashboard/programmes/${service?.id || 'srv-custom-02'}`;
+
+  let subject = (isCustomizedService && questionnaireUrl)
+    ? `✨ Action Required: Complete & Reupload Your Questionnaire - ${serviceTitle} (${orderReference})`
+    : `✨ Your Becoming Her Materials: ${serviceTitle} (${orderReference})`;
+
+  if (params.booking?.isUpdatedLink || params.booking?.isResend) {
+    subject = `🔔 Updated Meeting Link: Your 1-on-1 Session with Coach Zipporah (${orderReference})`;
   }
 
   const htmlContent = buildServicePdfEmailHtml({
@@ -291,7 +418,10 @@ export async function sendServicePdfEmail(params: SendServicePdfEmailParams): Pr
     pdfName: finalPdf?.name,
     downloadUrl,
     resources: allResources,
-    booking: params.booking
+    booking: params.booking,
+    isCustomizedService,
+    questionnaireUrl,
+    dashboardUploadUrl
   });
 
   // 1. If RESEND_API_KEY is available, dispatch via Resend REST API
@@ -312,6 +442,15 @@ export async function sendServicePdfEmail(params: SendServicePdfEmailParams): Pr
             path: downloadUrl
           }
         ];
+      }
+
+      // If customized service questionnaire template is available as a web link, also attach it
+      if (isCustomizedService && questionnaireUrl && typeof questionnaireUrl === 'string' && (questionnaireUrl.startsWith('http://') || questionnaireUrl.startsWith('https://')) && !questionnaireUrl.includes('localhost')) {
+        if (!emailPayload.attachments) emailPayload.attachments = [];
+        emailPayload.attachments.push({
+          filename: 'Becoming-Her-Coaching-Assessment-Questionnaire.docx',
+          path: questionnaireUrl
+        });
       }
 
       // Also attach additional resources if they are valid URLs

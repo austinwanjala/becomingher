@@ -111,7 +111,7 @@ export async function updateSession(request: NextRequest) {
           url.pathname = '/admin/login';
           url.searchParams.set(
             'message',
-            'Access Denied: Your account is registered as a Customer. Only users created as Administrators can access the administrative portal.'
+            "You don't have access rights"
           );
           const res = NextResponse.redirect(url);
           supabaseResponse.cookies.getAll().forEach((cookie) => res.cookies.set(cookie.name, cookie.value, cookie));

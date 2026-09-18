@@ -95,6 +95,7 @@ class Store {
       ],
       selar_product_id: 'v09683c927',
       selar_product_url: 'https://selar.com/v09683c927',
+      questionnaire_template_url: 'https://ssspngdzadgjehinospw.supabase.co/storage/v1/object/public/materials/questionnaires/1789587626505-1b5ozx.docx',
       resources: [],
       created_at: new Date().toISOString()
     },
