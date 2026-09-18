@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     const supabase = await createClient()
     await supabase.auth.signOut()
     revalidatePath('/', 'layout')
-    return NextResponse.redirect(new URL('/login?message=' + encodeURIComponent('You have been safely signed out. Please sign in to access your Customer Portal.'), request.url))
+    return NextResponse.redirect(new URL('/login', request.url))
   } catch (error: any) {
     console.error('Error signing out on server GET:', error)
     return NextResponse.redirect(new URL('/login', request.url))

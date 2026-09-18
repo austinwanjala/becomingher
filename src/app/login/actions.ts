@@ -49,5 +49,5 @@ export async function logoutAction() {
   const supabase = await createClient()
   await supabase.auth.signOut()
   revalidatePath('/', 'layout')
-  redirect('/login?message=' + encodeURIComponent('You have been safely signed out. Please sign in to access your Customer Portal.'))
+  redirect('/login')
 }

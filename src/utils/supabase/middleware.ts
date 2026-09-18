@@ -97,7 +97,6 @@ export async function updateSession(request: NextRequest) {
         const url = request.nextUrl.clone();
         url.pathname = '/admin/login';
         url.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search);
-        url.searchParams.set('message', 'Please sign in with your administrative account to access the console.');
         const res = NextResponse.redirect(url);
         supabaseResponse.cookies.getAll().forEach((cookie) => res.cookies.set(cookie.name, cookie.value, cookie));
         return res;
@@ -109,10 +108,6 @@ export async function updateSession(request: NextRequest) {
         if (!isAdminRole(role)) {
           const url = request.nextUrl.clone();
           url.pathname = '/admin/login';
-          url.searchParams.set(
-            'message',
-            "You don't have access rights"
-          );
           const res = NextResponse.redirect(url);
           supabaseResponse.cookies.getAll().forEach((cookie) => res.cookies.set(cookie.name, cookie.value, cookie));
           return res;
@@ -125,7 +120,6 @@ export async function updateSession(request: NextRequest) {
       const url = request.nextUrl.clone();
       url.pathname = '/login';
       url.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search);
-      url.searchParams.set('message', 'Please sign in to access your Customer Portal.');
       const res = NextResponse.redirect(url);
       supabaseResponse.cookies.getAll().forEach((cookie) => res.cookies.set(cookie.name, cookie.value, cookie));
       return res;

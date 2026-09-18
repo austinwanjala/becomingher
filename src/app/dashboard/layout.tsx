@@ -40,7 +40,7 @@ export default function CustomerDashboardLayout({
       if (!user || error) {
         // Redirect to login page immediately with return url
         const target = pathname && pathname.startsWith('/dashboard') ? pathname : '/dashboard';
-        window.location.href = `/login?redirect=${encodeURIComponent(target)}&message=${encodeURIComponent('Please sign in to access your Customer Portal.')}`;
+        window.location.href = target === '/dashboard' ? '/login' : `/login?redirect=${encodeURIComponent(target)}`;
         return;
       }
       setCurrentUser(user);
@@ -51,7 +51,7 @@ export default function CustomerDashboardLayout({
       data: { subscription }
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT' || !session) {
-        window.location.href = `/login?redirect=${encodeURIComponent(pathname || '/dashboard')}&message=${encodeURIComponent('Your session has ended. Please sign in to access your Customer Portal.')}`;
+        window.location.href = '/login';
         return;
       }
       setCurrentUser(session?.user || null);
@@ -63,7 +63,7 @@ export default function CustomerDashboardLayout({
   }, [pathname]);
 
   const handleSignOut = async () => {
-    await performClientSignOut('/login?message=' + encodeURIComponent('You have been signed out successfully. Please sign in to access your Customer Portal.'));
+    await performClientSignOut('/login');
   };
 
   const navItems = [

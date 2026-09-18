@@ -5,7 +5,7 @@ import { createClient } from '@/utils/supabase/client';
  * Clears localStorage, revokes server cookies, and redirects cleanly.
  */
 export async function performClientSignOut(
-  redirectUrl: string = '/login?message=' + encodeURIComponent('You have been safely signed out. Please sign in to access your Customer Portal.')
+  redirectUrl: string = '/login'
 ) {
   try {
     const supabase = createClient();

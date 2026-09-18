@@ -43,22 +43,16 @@ export default async function AdminLayout({
 
   if (!user) {
     redirect(
-      '/admin/login?redirect=' +
-        encodeURIComponent(pathname || '/admin') +
-        '&message=' +
-        encodeURIComponent('Please sign in with your administrative account to access the console.')
+      pathname && pathname !== '/admin'
+        ? '/admin/login?redirect=' + encodeURIComponent(pathname)
+        : '/admin/login'
     );
   }
 
   // Strict Role-Based Access Control: Deny customers from accessing administrative portal
   const role = await getUserRole(user, supabase);
   if (!isAdminRole(role)) {
-    redirect(
-      '/admin/login?message=' +
-        encodeURIComponent(
-          "You don't have access rights"
-        )
-    );
+    redirect('/admin/login');
   }
 
   const adminName = user.user_metadata?.name || user.email?.split('@')[0] || 'Administrator';

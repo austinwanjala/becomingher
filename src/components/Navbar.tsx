@@ -38,7 +38,7 @@ export function Navbar() {
   }, []);
 
   const handleSignOut = async () => {
-    await performClientSignOut('/login?message=' + encodeURIComponent('You have been signed out successfully. Please sign in to access your Customer Portal.'));
+    await performClientSignOut('/login');
   };
 
   const navLinks = [

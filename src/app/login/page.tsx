@@ -1,28 +1,37 @@
-import { login } from './actions'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
-import Link from 'next/link'
-import { Gem, AlertCircle, ArrowLeft } from 'lucide-react'
-import { BrandLogo } from '@/components/BrandLogo'
+import type { Metadata } from 'next';
+import { login } from './actions';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { Gem, AlertCircle, ArrowLeft } from 'lucide-react';
+import { BrandLogo } from '@/components/BrandLogo';
+import { CleanBrowserUrl } from '@/components/CleanBrowserUrl';
 
-import { redirect } from 'next/navigation'
-import { createClient } from '@/utils/supabase/server'
+import { redirect } from 'next/navigation';
+import { createClient } from '@/utils/supabase/server';
+
+export const metadata: Metadata = {
+  title: 'Sign In | Becoming Her',
+  description: 'Sign in to access your Becoming Her personal development and coaching sanctuary.',
+};
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ message?: string; redirect?: string }>
+  searchParams: Promise<{ message?: string; redirect?: string }>;
 }) {
   const params = await searchParams;
-  const message = params.message;
+  const rawMessage = params.message;
+  // Don't show redundant generic banner
+  const message = rawMessage && !rawMessage.toLowerCase().includes('customer portal') ? rawMessage : undefined;
   // Strictly isolate customer portal: /login must never redirect into /admin
   const rawRedirect = params.redirect || '/dashboard';
   const redirectTarget = rawRedirect.startsWith('/admin') ? '/dashboard' : rawRedirect;
 
   // If user is already authenticated and didn't arrive via an explicit message/sign-out, redirect to target
-  if (!message) {
+  if (!rawMessage) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
@@ -32,6 +41,7 @@ export default async function LoginPage({
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#FAF8F5] p-4 text-stone-900 relative">
+      <CleanBrowserUrl />
       {/* Background ambient accents */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 bg-gradient-to-b from-rose-100/40 via-amber-50/30 to-transparent pointer-events-none" />
 
