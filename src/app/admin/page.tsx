@@ -27,13 +27,29 @@ export default async function AdminOverviewPage() {
 
   try {
     const admin = await createAdminClient();
-    const [{ data: dbOrders }, { data: dbBookings }, { data: dbEntitlements }] = await Promise.all([
+    const [{ data: dbOrders }, { data: dbBookings }, { data: dbEntitlements }, { data: dbProfiles }] = await Promise.all([
       admin.from('orders').select('*').order('created_at', { ascending: false }),
       admin.from('bookings').select('*').order('created_at', { ascending: false }),
-      admin.from('entitlements').select('*')
+      admin.from('entitlements').select('*'),
+      admin.from('profiles').select('id, full_name')
     ]);
 
-    if (dbOrders && dbOrders.length > 0) orders = dbOrders;
+    const profilesMap = new Map((dbProfiles || []).map((p) => [p.id, p]));
+
+    if (dbOrders && dbOrders.length > 0) {
+      orders = dbOrders.map((o: any) => {
+        let name = o.customer_name;
+        if (!name || name === 'me' || name === 'Unknown') {
+          const prof = o.customer_id ? profilesMap.get(o.customer_id) : null;
+          name = prof?.full_name || (o.customer_email ? o.customer_email.split('@')[0] : 'Client');
+        }
+        return {
+          ...o,
+          customer_name: name,
+          amount: Number(o.amount || 0)
+        };
+      });
+    }
     if (dbBookings) bookings = dbBookings;
     if (dbEntitlements && dbEntitlements.length > 0) entitlements = dbEntitlements;
   } catch (err) {
@@ -43,7 +59,7 @@ export default async function AdminOverviewPage() {
 
   const totalRevenue = orders
     .filter((o) => o.payment_status === 'SUCCESSFUL')
-    .reduce((acc, o) => acc + o.amount, 0);
+    .reduce((acc, o) => acc + Number(o.amount || 0), 0);
 
   const successfulPayments = orders.filter((o) => o.payment_status === 'SUCCESSFUL').length;
   const pendingPayments = orders.filter((o) => o.payment_status === 'PENDING').length;
