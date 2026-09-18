@@ -23,7 +23,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { store } from '@/lib/store';
-import { Programme, ProgrammeModule, ProgrammeLesson, ReflectionQuestion, ProgrammeBook } from '@/types';
+import { Programme, ProgrammeModule, ProgrammeLesson, ReflectionQuestion, ProgrammeBook, ModuleDocument } from '@/types';
 import { createClient } from '@/utils/supabase/client';
 
 import { getProgrammeById, saveProgramme } from '@/lib/programmes';
@@ -33,6 +33,13 @@ export default function AdminProgrammesPage() {
   const [programme, setProgramme] = useState<Programme | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedModuleId, setSelectedModuleId] = useState<string>('');
+
+  // Module document upload state
+  const [docTitle, setDocTitle] = useState('');
+  const [docDescription, setDocDescription] = useState('');
+  const [isUploadingDoc, setIsUploadingDoc] = useState(false);
+  const [docUploadNotification, setDocUploadNotification] = useState<string | null>(null);
+  const docFileInputRef = useRef<HTMLInputElement>(null);
   
   useEffect(() => {
     const fetchProgrammes = async () => {
@@ -278,6 +285,94 @@ export default function AdminProgrammesPage() {
     
     setIsEditingLesson(null);
     store.addAuditLog('LESSON_UPDATED', 'CURRICULUM', `Lesson "${lessonTitle}" updated`);
+  };
+
+  const handleModuleDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !programme || !selectedModule) return;
+
+    setIsUploadingDoc(true);
+    setDocUploadNotification('Uploading document to storage...');
+
+    try {
+      const supabase = createClient();
+      const fileExt = file.name.split('.').pop() || 'pdf';
+      const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}-${safeName}`;
+      const filePath = `modules/${selectedModule.id}/${fileName}`;
+
+      const { error: uploadErr } = await supabase.storage
+        .from('materials')
+        .upload(filePath, file);
+
+      if (uploadErr) throw uploadErr;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('materials')
+        .getPublicUrl(filePath);
+
+      const sizeInMb = (file.size / (1024 * 1024)).toFixed(1);
+      const sizeStr = Number(sizeInMb) < 0.1 ? `${(file.size / 1024).toFixed(0)} KB` : `${sizeInMb} MB`;
+
+      const newDoc: ModuleDocument = {
+        id: `doc-${Date.now()}`,
+        title: docTitle.trim() || file.name.replace(/\.[^/.]+$/, ''),
+        description: docDescription.trim() || undefined,
+        file_name: file.name,
+        file_url: publicUrlData.publicUrl,
+        file_size: sizeStr,
+        file_type: fileExt.toUpperCase(),
+        created_at: new Date().toISOString()
+      };
+
+      const updatedModules = (programme.modules || []).map((m) => {
+        if (m.id === selectedModule.id) {
+          return {
+            ...m,
+            documents: [...(m.documents || []), newDoc]
+          };
+        }
+        return m;
+      });
+
+      const updatedProg = { ...programme, modules: updatedModules };
+      setProgramme(updatedProg);
+      setAllProgrammes((prev) => prev.map((p) => (p.id === updatedProg.id ? updatedProg : p)));
+
+      const saveRes = await saveProgramme(updatedProg);
+      if (!saveRes.success) throw new Error(saveRes.error || 'Failed to save programme');
+
+      setDocTitle('');
+      setDocDescription('');
+      if (docFileInputRef.current) docFileInputRef.current.value = '';
+      setDocUploadNotification(`"${newDoc.title}" successfully attached to ${selectedModule.title}!`);
+    } catch (err: any) {
+      console.error('Module doc upload failed:', err);
+      setDocUploadNotification(`Upload failed: ${err.message}`);
+    } finally {
+      setIsUploadingDoc(false);
+      setTimeout(() => setDocUploadNotification(null), 5000);
+    }
+  };
+
+  const handleRemoveModuleDoc = async (docId: string) => {
+    if (!programme || !selectedModule) return;
+    const confirm = window.confirm('Are you sure you want to remove this document from the module?');
+    if (!confirm) return;
+
+    const updatedDocs = (selectedModule.documents || []).filter((d) => d.id !== docId);
+    const updatedModules = (programme.modules || []).map((m) => {
+      if (m.id === selectedModule.id) {
+        return { ...m, documents: updatedDocs };
+      }
+      return m;
+    });
+
+    const updatedProg = { ...programme, modules: updatedModules };
+    setProgramme(updatedProg);
+    setAllProgrammes((prev) => prev.map((p) => (p.id === updatedProg.id ? updatedProg : p)));
+
+    await saveProgramme(updatedProg);
   };
 
   if (isLoading || !programme) {
@@ -741,6 +836,136 @@ export default function AdminProgrammesPage() {
                   >
                     Add Question
                   </button>
+                </div>
+              </div>
+
+              {/* Module Documents & Materials */}
+              <div className="space-y-4 pt-6 border-t border-stone-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-serif text-base font-semibold text-stone-900">
+                      Module Documents & Supplementary Materials
+                    </h4>
+                    <p className="text-xs text-stone-500">
+                      Upload several documents (PDF worksheets, templates, exercise guides) accessible by clients enrolled in this module.
+                    </p>
+                  </div>
+                  <span className="text-xs font-semibold text-stone-600 bg-stone-100 px-2.5 py-1 rounded-full">
+                    {(selectedModule.documents || []).length} Document(s)
+                  </span>
+                </div>
+
+                {docUploadNotification && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 font-medium">
+                    {docUploadNotification}
+                  </div>
+                )}
+
+                {/* Uploaded Documents List */}
+                {(selectedModule.documents || []).length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(selectedModule.documents || []).map((doc) => (
+                      <div
+                        key={doc.id}
+                        className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col justify-between gap-3 text-xs"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="w-7 h-7 rounded-lg bg-rose-100 text-rose-900 flex items-center justify-center font-bold text-[10px] shrink-0">
+                                {doc.file_type || 'PDF'}
+                              </span>
+                              <h5 className="font-semibold text-stone-900 line-clamp-1">{doc.title}</h5>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveModuleDoc(doc.id)}
+                              className="text-stone-400 hover:text-rose-700 p-1 transition"
+                              title="Delete document"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          {doc.description && (
+                            <p className="text-[11px] text-stone-500 line-clamp-2">{doc.description}</p>
+                          )}
+                          <p className="text-[10px] text-stone-400 font-mono">
+                            {doc.file_name} {doc.file_size ? `• ${doc.file_size}` : ''}
+                          </p>
+                        </div>
+
+                        <div className="pt-2 border-t border-stone-200/60 flex items-center justify-between">
+                          <a
+                            href={doc.file_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] text-rose-900 font-semibold hover:underline"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            <span>Preview / Download</span>
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-xl bg-stone-50/70 border border-dashed border-stone-200 text-center text-xs text-stone-400">
+                    No supplementary documents attached to this module yet. Upload documents below.
+                  </div>
+                )}
+
+                {/* Upload Form */}
+                <div className="p-4 rounded-2xl bg-stone-50/90 border border-stone-200 space-y-3">
+                  <span className="text-xs font-semibold text-stone-800 block">
+                    Upload & Attach New Document to {selectedModule.title}
+                  </span>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <label className="text-[11px] font-medium text-stone-600 block mb-1">Document Title</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Module Reflection & Integration Worksheet"
+                        value={docTitle}
+                        onChange={(e) => setDocTitle(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:ring-1 focus:ring-rose-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-medium text-stone-600 block mb-1">Description (Optional)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Printable template for exercise 2"
+                        value={docDescription}
+                        onChange={(e) => setDocDescription(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:ring-1 focus:ring-rose-900"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-1">
+                    <input
+                      type="file"
+                      ref={docFileInputRef}
+                      onChange={handleModuleDocUpload}
+                      disabled={isUploadingDoc}
+                      className="hidden"
+                      id={`module-doc-upload-${selectedModule.id}`}
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip"
+                    />
+                    <label
+                      htmlFor={`module-doc-upload-${selectedModule.id}`}
+                      className={`cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold shadow-sm transition ${
+                        isUploadingDoc
+                          ? 'bg-stone-400 text-white cursor-not-allowed'
+                          : 'bg-stone-900 text-white hover:bg-rose-950'
+                      }`}
+                    >
+                      <UploadCloud className="w-3.5 h-3.5" />
+                      <span>{isUploadingDoc ? 'Uploading Document...' : 'Select File & Attach to Module'}</span>
+                    </label>
+                    <span className="text-[11px] text-stone-400">PDF, Word, Excel, or Zip</span>
+                  </div>
                 </div>
               </div>
             </div>

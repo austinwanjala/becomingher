@@ -149,6 +149,17 @@ export interface UserReflection {
   updated_at?: string;
 }
 
+export interface ModuleDocument {
+  id: string;
+  title: string;
+  file_name: string;
+  file_url: string;
+  file_size?: string;
+  file_type?: string;
+  description?: string;
+  created_at?: string;
+}
+
 export interface ProgrammeModule {
   id: string;
   programme_id: string;
@@ -157,6 +168,7 @@ export interface ProgrammeModule {
   order: number;
   lessons: ProgrammeLesson[];
   reflection_questions: ReflectionQuestion[];
+  documents?: ModuleDocument[];
 }
 
 export interface ProgrammeBook {

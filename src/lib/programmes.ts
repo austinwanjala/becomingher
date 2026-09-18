@@ -82,8 +82,22 @@ export async function getProgrammeByIdOrServiceId(identifier: string): Promise<P
  * Admin operation.
  */
 export async function saveProgramme(programme: Programme): Promise<{ success: boolean; error?: string }> {
-  const supabase = createClient();
+  try {
+    const res = await fetch('/api/admin/programmes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ programme })
+    });
 
+    if (res.ok) {
+      return { success: true };
+    }
+  } catch (apiErr) {
+    console.warn('Admin API save failed, trying direct client:', apiErr);
+  }
+
+  // Fallback to direct client
+  const supabase = createClient();
   const payload = {
     id: programme.id,
     service_id: programme.service_id,

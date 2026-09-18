@@ -682,6 +682,38 @@ export default function ProgrammesDashboardPage() {
               );
             })}
           </div>
+
+          {/* Module Attached Documents (Sidebar Quick List) */}
+          {activeModule.documents && activeModule.documents.length > 0 && (
+            <div className="pt-4 border-t border-stone-100 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-semibold text-rose-900 uppercase tracking-wider">
+                  Module Materials
+                </span>
+                <span className="text-[10px] font-medium text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full">
+                  {activeModule.documents.length} file(s)
+                </span>
+              </div>
+              <div className="space-y-1.5">
+                {activeModule.documents.map((doc) => (
+                  <a
+                    key={doc.id}
+                    href={doc.file_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    download
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-stone-50 hover:bg-rose-50 border border-stone-200/70 text-xs text-stone-800 transition group"
+                  >
+                    <div className="flex items-center gap-2 truncate pr-2">
+                      <FileText className="w-3.5 h-3.5 text-rose-800 shrink-0" />
+                      <span className="truncate font-medium text-[11px]">{doc.title}</span>
+                    </div>
+                    <Download className="w-3.5 h-3.5 text-stone-400 group-hover:text-rose-900 shrink-0" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right Column: Selected Lesson Viewer & Inquiries */}
@@ -734,6 +766,64 @@ export default function ProgrammesDashboardPage() {
                   {activeLesson.content}
                 </div>
               </div>
+
+              {/* Module Materials & Supplementary Documents */}
+              {activeModule.documents && activeModule.documents.length > 0 && (
+                <div className="p-6 sm:p-7 rounded-2xl bg-stone-50 border border-stone-200 space-y-4">
+                  <div className="flex items-center justify-between border-b border-stone-200/80 pb-3">
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-semibold text-rose-900 uppercase tracking-widest">
+                        Downloads & Worksheets
+                      </span>
+                      <h3 className="font-serif text-lg font-semibold text-stone-900">
+                        {activeModule.title.split(':')[0]} Materials ({activeModule.documents.length})
+                      </h3>
+                      <p className="text-xs text-stone-500">
+                        Download your printable worksheets, guides, and materials for this module.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {activeModule.documents.map((doc) => (
+                      <div
+                        key={doc.id}
+                        className="p-4 rounded-xl bg-white border border-stone-200 shadow-xs flex flex-col justify-between gap-3 hover:border-stone-300 transition group"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-rose-100 text-rose-900 flex items-center justify-center shrink-0">
+                            <FileText className="w-4 h-4" />
+                          </div>
+                          <div className="space-y-0.5 min-w-0">
+                            <h4 className="text-xs font-semibold text-stone-900 truncate" title={doc.title}>
+                              {doc.title}
+                            </h4>
+                            {doc.description && (
+                              <p className="text-[11px] text-stone-500 line-clamp-2 leading-tight">
+                                {doc.description}
+                              </p>
+                            )}
+                            <p className="text-[10px] text-stone-400 font-mono pt-0.5">
+                              {doc.file_name} {doc.file_size ? `• ${doc.file_size}` : ''} {doc.file_type ? `• ${doc.file_type}` : ''}
+                            </p>
+                          </div>
+                        </div>
+
+                        <a
+                          href={doc.file_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          download
+                          className="inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg bg-stone-900 text-white text-xs font-semibold hover:bg-rose-950 transition shadow-xs"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>Download File</span>
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Reflection Questions for this Module */}
               <div className="pt-8 border-t border-stone-200 space-y-6">
