@@ -94,3 +94,58 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError
+    } = await supabase.auth.getUser();
+
+    if (!user || authError) {
+      return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+    }
+
+    const role = await getUserRole(user, supabase);
+    if (!isAdminRole(role)) {
+      return NextResponse.json({ error: "You don't have access rights." }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    let id = searchParams.get('id');
+    if (!id) {
+      try {
+        const body = await request.json();
+        id = body.id;
+      } catch (_) {}
+    }
+
+    if (!id) {
+      return NextResponse.json({ error: 'Booking ID is required.' }, { status: 400 });
+    }
+
+    const admin = await createAdminClient();
+    const { error } = await admin
+      .from('bookings')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('[ADMIN_BOOKINGS_DELETE] Error deleting booking:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    store.addAuditLog(
+      'BOOKING_DELETED_BY_ADMIN',
+      'BOOKINGS',
+      `Booking ${id} permanently deleted by ${user.email}`
+    );
+
+    return NextResponse.json({ success: true, message: `Booking ${id} deleted successfully.` });
+  } catch (err: any) {
+    console.error('[ADMIN_BOOKINGS_DELETE] Exception:', err);
+    return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 });
+  }
+}
+

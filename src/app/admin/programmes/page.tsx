@@ -79,6 +79,18 @@ export default function AdminProgrammesPage() {
   const [lessonDuration, setLessonDuration] = useState('15 mins');
   const [lessonContent, setLessonContent] = useState('');
 
+  // Module edit state
+  const [isEditingModuleMeta, setIsEditingModuleMeta] = useState(false);
+  const [moduleTitleEdit, setModuleTitleEdit] = useState('');
+  const [moduleDescEdit, setModuleDescEdit] = useState('');
+
+  // Lesson creation state
+  const [isCreatingLesson, setIsCreatingLesson] = useState(false);
+  const [newLessonTitle, setNewLessonTitle] = useState('');
+  const [newLessonDuration, setNewLessonDuration] = useState('15 mins');
+  const [newLessonDescription, setNewLessonDescription] = useState('');
+  const [newLessonContent, setNewLessonContent] = useState('');
+
   const [newQuestionText, setNewQuestionText] = useState('');
 
   const [isEditingBook, setIsEditingBook] = useState(false);
@@ -235,6 +247,81 @@ export default function AdminProgrammesPage() {
     store.addAuditLog('MODULE_CREATED', 'CURRICULUM', `New module created in ${programme.title}`);
   };
 
+  const handleDeleteProgramme = async () => {
+    if (!programme) return;
+    const confirm = window.confirm(
+      `WARNING: Are you sure you want to permanently delete the entire programme "${programme.title}"?\n\nThis will remove the programme, all its modules, lessons, and uploaded documents from the database.`
+    );
+    if (!confirm) return;
+
+    try {
+      const res = await fetch(`/api/admin/programmes?id=${encodeURIComponent(programme.id)}`, {
+        method: 'DELETE'
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to delete programme');
+      }
+
+      const remaining = allProgrammes.filter(p => p.id !== programme.id);
+      setAllProgrammes(remaining);
+      setProgramme(remaining[0] || null);
+      setSelectedModuleId(remaining[0]?.modules?.[0]?.id || '');
+      store.addAuditLog('PROGRAMME_DELETED', 'CURRICULUM', `Programme "${programme.title}" deleted`);
+      alert(`Programme "${programme.title}" was successfully deleted.`);
+    } catch (err: any) {
+      console.error('Delete programme failed:', err);
+      alert(`Delete failed: ${err.message}`);
+    }
+  };
+
+  const handleDeleteModule = async (modId: string, modTitle: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!programme) return;
+    const confirm = window.confirm(
+      `Are you sure you want to delete "${modTitle}"?\n\nThis will permanently delete this module, including all its lessons, reflection questions, and uploaded documents.`
+    );
+    if (!confirm) return;
+
+    const remainingModules = (programme.modules || []).filter(m => m.id !== modId);
+    const reordered = remainingModules.map((m, idx) => ({ ...m, order: idx + 1 }));
+    const updatedProg = { ...programme, modules: reordered };
+
+    setProgramme(updatedProg);
+    setAllProgrammes(prev => prev.map(p => p.id === updatedProg.id ? updatedProg : p));
+    if (selectedModuleId === modId) {
+      setSelectedModuleId(reordered[0]?.id || '');
+    }
+
+    await saveProgramme(updatedProg);
+    store.addAuditLog('MODULE_DELETED', 'CURRICULUM', `Module "${modTitle}" deleted from ${programme.title}`);
+  };
+
+  const startEditModuleMeta = () => {
+    if (!selectedModule) return;
+    setModuleTitleEdit(selectedModule.title);
+    setModuleDescEdit(selectedModule.description || '');
+    setIsEditingModuleMeta(true);
+  };
+
+  const saveModuleMeta = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!programme || !selectedModule) return;
+
+    const updatedModules = (programme.modules || []).map(m =>
+      m.id === selectedModule.id
+        ? { ...m, title: moduleTitleEdit.trim(), description: moduleDescEdit.trim() }
+        : m
+    );
+
+    const updatedProg = { ...programme, modules: updatedModules };
+    setProgramme(updatedProg);
+    setAllProgrammes(prev => prev.map(p => p.id === updatedProg.id ? updatedProg : p));
+    await saveProgramme(updatedProg);
+    setIsEditingModuleMeta(false);
+    store.addAuditLog('MODULE_UPDATED', 'CURRICULUM', `Module "${moduleTitleEdit}" updated`);
+  };
+
   const handleAddReflectionQuestion = async () => {
     if (!programme || !newQuestionText.trim() || !selectedModule) return;
     const newQ: ReflectionQuestion = {
@@ -255,6 +342,23 @@ export default function AdminProgrammesPage() {
     await saveProgramme(updatedProgramme);
     setNewQuestionText('');
     store.addAuditLog('REFLECTION_QUESTION_ADDED', 'CURRICULUM', `Question added to ${selectedModule.title}`);
+  };
+
+  const handleDeleteQuestion = async (questionId: string) => {
+    if (!programme || !selectedModule) return;
+    const confirm = window.confirm('Are you sure you want to delete this reflection question?');
+    if (!confirm) return;
+
+    const updatedQuestions = (selectedModule.reflection_questions || []).filter(q => q.id !== questionId);
+    const updatedModules = (programme.modules || []).map(m =>
+      m.id === selectedModule.id ? { ...m, reflection_questions: updatedQuestions } : m
+    );
+
+    const updatedProg = { ...programme, modules: updatedModules };
+    setProgramme(updatedProg);
+    setAllProgrammes(prev => prev.map(p => p.id === updatedProg.id ? updatedProg : p));
+    await saveProgramme(updatedProg);
+    store.addAuditLog('REFLECTION_QUESTION_DELETED', 'CURRICULUM', `Question deleted from ${selectedModule.title}`);
   };
 
   const startEditLesson = (les: ProgrammeLesson) => {
@@ -285,6 +389,54 @@ export default function AdminProgrammesPage() {
     
     setIsEditingLesson(null);
     store.addAuditLog('LESSON_UPDATED', 'CURRICULUM', `Lesson "${lessonTitle}" updated`);
+  };
+
+  const handleDeleteLesson = async (lessonId: string, lessonTitle: string) => {
+    if (!programme || !selectedModule) return;
+    const confirm = window.confirm(`Are you sure you want to delete lesson "${lessonTitle}"?`);
+    if (!confirm) return;
+
+    const updatedLessons = (selectedModule.lessons || []).filter(l => l.id !== lessonId);
+    const updatedModules = (programme.modules || []).map(m =>
+      m.id === selectedModule.id ? { ...m, lessons: updatedLessons } : m
+    );
+
+    const updatedProg = { ...programme, modules: updatedModules };
+    setProgramme(updatedProg);
+    setAllProgrammes(prev => prev.map(p => p.id === updatedProg.id ? updatedProg : p));
+    await saveProgramme(updatedProg);
+    store.addAuditLog('LESSON_DELETED', 'CURRICULUM', `Lesson "${lessonTitle}" deleted from ${selectedModule.title}`);
+  };
+
+  const handleCreateLesson = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!programme || !selectedModule || !newLessonTitle.trim()) return;
+
+    const newLes: ProgrammeLesson = {
+      id: `les-${Date.now()}`,
+      title: newLessonTitle.trim(),
+      duration: newLessonDuration.trim() || '15 mins',
+      description: newLessonDescription.trim() || newLessonTitle.trim(),
+      content: newLessonContent.trim() || 'Add your lesson wisdom and reflective frameworks here.',
+      order: (selectedModule.lessons || []).length + 1
+    };
+
+    const updatedLessons = [...(selectedModule.lessons || []), newLes];
+    const updatedModules = (programme.modules || []).map(m =>
+      m.id === selectedModule.id ? { ...m, lessons: updatedLessons } : m
+    );
+
+    const updatedProg = { ...programme, modules: updatedModules };
+    setProgramme(updatedProg);
+    setAllProgrammes(prev => prev.map(p => p.id === updatedProg.id ? updatedProg : p));
+    await saveProgramme(updatedProg);
+
+    setIsCreatingLesson(false);
+    setNewLessonTitle('');
+    setNewLessonDuration('15 mins');
+    setNewLessonDescription('');
+    setNewLessonContent('');
+    store.addAuditLog('LESSON_CREATED', 'CURRICULUM', `Lesson "${newLes.title}" added to ${selectedModule.title}`);
   };
 
   const handleModuleDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -411,10 +563,18 @@ export default function AdminProgrammesPage() {
           </select>
           <button
             onClick={handleAddModule}
-            className="px-5 py-2.5 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-rose-950 transition flex items-center gap-1.5 shadow shrink-0"
+            className="px-4 py-2.5 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-rose-950 transition flex items-center gap-1.5 shadow shrink-0"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Add New Module</span>
+            <span>Add Module</span>
+          </button>
+          <button
+            onClick={handleDeleteProgramme}
+            className="px-3.5 py-2.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-800 text-xs font-semibold hover:bg-rose-100 hover:text-rose-950 transition flex items-center gap-1.5 shadow-sm shrink-0"
+            title="Delete this programme"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Delete Programme</span>
           </button>
         </div>
       </div>
@@ -739,10 +899,10 @@ export default function AdminProgrammesPage() {
             {(programme.modules || []).map((mod, idx) => {
               const isSelected = mod.id === selectedModule?.id;
               return (
-                <button
+                <div
                   key={mod.id}
                   onClick={() => setSelectedModuleId(mod.id)}
-                  className={`w-full text-left p-4 rounded-2xl border transition flex flex-col gap-1 ${
+                  className={`group relative w-full text-left p-4 rounded-2xl border transition flex flex-col gap-1 cursor-pointer ${
                     isSelected
                       ? 'bg-rose-50 border-rose-300 text-rose-950 shadow-sm'
                       : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50'
@@ -752,12 +912,22 @@ export default function AdminProgrammesPage() {
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-rose-800">
                       Module {idx + 1}
                     </span>
-                    <span className="text-[11px] text-stone-500">
-                      {mod.lessons?.length || 0} Lessons • {mod.reflection_questions?.length || 0} Questions
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] text-stone-500">
+                        {mod.lessons?.length || 0} Lessons • {mod.reflection_questions?.length || 0} Questions
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteModule(mod.id, mod.title, e)}
+                        className="p-1 rounded text-stone-400 hover:text-rose-700 hover:bg-rose-100 transition opacity-80 group-hover:opacity-100"
+                        title={`Delete ${mod.title}`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
-                  <h4 className="font-serif font-semibold text-sm text-stone-900">{mod.title}</h4>
-                </button>
+                  <h4 className="font-serif font-semibold text-sm text-stone-900 pr-6">{mod.title}</h4>
+                </div>
               );
             })}
           </div>
@@ -767,58 +937,170 @@ export default function AdminProgrammesPage() {
         <div className="lg:col-span-8 space-y-6">
           {selectedModule && (
             <div className="bg-white p-6 sm:p-8 rounded-3xl border border-stone-200 shadow-sm space-y-6">
-              <div className="border-b border-stone-100 pb-4 space-y-1">
-                <span className="text-xs text-rose-800 font-semibold uppercase tracking-widest">
-                  Editing Module Content
-                </span>
-                <h2 className="font-serif text-2xl font-semibold text-stone-900">
-                  {selectedModule.title}
-                </h2>
-                <p className="text-xs text-stone-600">{selectedModule.description}</p>
+              <div className="border-b border-stone-100 pb-4 space-y-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1 flex-1">
+                    <span className="text-xs text-rose-800 font-semibold uppercase tracking-widest">
+                      Editing Module Content
+                    </span>
+                    {!isEditingModuleMeta ? (
+                      <>
+                        <h2 className="font-serif text-2xl font-semibold text-stone-900">
+                          {selectedModule.title}
+                        </h2>
+                        <p className="text-xs text-stone-600">{selectedModule.description}</p>
+                      </>
+                    ) : (
+                      <form onSubmit={saveModuleMeta} className="space-y-3 pt-2">
+                        <div>
+                          <label className="text-[11px] font-semibold text-stone-700 block mb-1">Module Title</label>
+                          <input
+                            type="text"
+                            required
+                            value={moduleTitleEdit}
+                            onChange={(e) => setModuleTitleEdit(e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:ring-1 focus:ring-rose-900"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-semibold text-stone-700 block mb-1">Module Transformation Description</label>
+                          <textarea
+                            rows={2}
+                            value={moduleDescEdit}
+                            onChange={(e) => setModuleDescEdit(e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:ring-1 focus:ring-rose-900"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="submit"
+                            className="px-3.5 py-1.5 rounded-lg bg-stone-900 text-white text-xs font-semibold hover:bg-rose-950 transition"
+                          >
+                            Save Changes
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingModuleMeta(false)}
+                            className="px-3 py-1.5 rounded-lg border border-stone-200 text-stone-600 text-xs font-medium hover:bg-stone-50"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </form>
+                    )}
+                  </div>
+
+                  {!isEditingModuleMeta && (
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={startEditModuleMeta}
+                        className="px-3 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-medium flex items-center gap-1 shadow-sm"
+                      >
+                        <Edit2 className="w-3.5 h-3.5 text-stone-500" />
+                        <span>Edit Details</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteModule(selectedModule.id, selectedModule.title, e)}
+                        className="px-3 py-1.5 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-800 text-xs font-medium flex items-center gap-1 shadow-sm transition"
+                        title="Delete this entire module"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-rose-700" />
+                        <span>Delete Module</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Lessons list in module */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="font-serif text-sm font-semibold text-stone-900">Lessons in this Module</h4>
+                  <button
+                    type="button"
+                    onClick={() => setIsCreatingLesson(true)}
+                    className="px-3 py-1.5 rounded-lg bg-stone-900 hover:bg-rose-950 text-white text-xs font-semibold flex items-center gap-1 shadow-sm transition"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Lesson</span>
+                  </button>
                 </div>
 
                 <div className="space-y-2">
-                  {(selectedModule.lessons || []).map((lesson) => (
-                    <div
-                      key={lesson.id}
-                      className="p-4 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-between text-xs"
-                    >
-                      <div className="space-y-0.5">
-                        <h5 className="font-semibold text-stone-900">{lesson.title}</h5>
-                        <p className="text-stone-500 text-[11px]">{lesson.duration}</p>
-                      </div>
-                      <button
-                        onClick={() => startEditLesson(lesson)}
-                        className="px-3 py-1.5 rounded-lg bg-white border border-stone-200 text-stone-700 hover:text-stone-950 text-xs flex items-center gap-1 shadow-sm"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" /> Edit Lesson
-                      </button>
+                  {(selectedModule.lessons || []).length === 0 ? (
+                    <div className="p-4 rounded-xl bg-stone-50 border border-dashed border-stone-200 text-stone-400 text-xs text-center">
+                      No lessons in this module yet. Click &quot;Add Lesson&quot; to create one.
                     </div>
-                  ))}
+                  ) : (
+                    (selectedModule.lessons || []).map((lesson) => (
+                      <div
+                        key={lesson.id}
+                        className="p-4 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-between text-xs"
+                      >
+                        <div className="space-y-0.5">
+                          <h5 className="font-semibold text-stone-900">{lesson.title}</h5>
+                          <p className="text-stone-500 text-[11px]">{lesson.duration}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => startEditLesson(lesson)}
+                            className="px-3 py-1.5 rounded-lg bg-white border border-stone-200 text-stone-700 hover:text-stone-950 text-xs flex items-center gap-1 shadow-sm"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" /> Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteLesson(lesson.id, lesson.title)}
+                            className="p-1.5 rounded-lg border border-stone-200 bg-white text-stone-400 hover:text-rose-700 hover:border-rose-200 hover:bg-rose-50 text-xs flex items-center gap-1 shadow-sm transition"
+                            title="Delete Lesson"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
               {/* Reflection Questions */}
               <div className="space-y-3 pt-4 border-t border-stone-100">
-                <h4 className="font-serif text-sm font-semibold text-stone-900">
-                  Guided Reflection Questions
-                </h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="font-serif text-sm font-semibold text-stone-900">
+                    Guided Reflection Questions
+                  </h4>
+                  <span className="text-xs text-stone-500">
+                    {(selectedModule.reflection_questions || []).length} Inquiries
+                  </span>
+                </div>
                 <div className="space-y-2">
-                  {(selectedModule.reflection_questions || []).map((q, qIdx) => (
-                    <div
-                      key={q.id}
-                      className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-xs flex items-start gap-2"
-                    >
-                      <span className="font-bold text-rose-900">{qIdx + 1}.</span>
-                      <p className="text-stone-700 font-medium leading-relaxed">{q.question}</p>
+                  {(selectedModule.reflection_questions || []).length === 0 ? (
+                    <div className="p-4 rounded-xl bg-stone-50 border border-dashed border-stone-200 text-stone-400 text-xs text-center">
+                      No reflection questions added to this module yet.
                     </div>
-                  ))}
+                  ) : (
+                    (selectedModule.reflection_questions || []).map((q, qIdx) => (
+                      <div
+                        key={q.id}
+                        className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-xs flex items-start justify-between gap-2"
+                      >
+                        <div className="flex items-start gap-2">
+                          <span className="font-bold text-rose-900">{qIdx + 1}.</span>
+                          <p className="text-stone-700 font-medium leading-relaxed">{q.question}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteQuestion(q.id)}
+                          className="p-1 text-stone-400 hover:text-rose-700 transition shrink-0"
+                          title="Delete reflection question"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))
+                  )}
                 </div>
 
                 <div className="flex gap-2 pt-2">
@@ -1024,6 +1306,91 @@ export default function AdminProgrammesPage() {
                   className="px-5 py-2.5 rounded-xl bg-stone-900 text-white font-semibold hover:bg-rose-950 shadow"
                 >
                   Save Lesson
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Lesson Create Modal */}
+      {isCreatingLesson && (
+        <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white max-w-xl w-full rounded-3xl p-8 border border-stone-200 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-serif text-xl font-semibold text-stone-900">Add New Lesson</h3>
+                <p className="text-xs text-stone-500">Adding to {selectedModule?.title}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCreatingLesson(false)}
+                className="p-1 rounded-lg text-stone-400 hover:text-stone-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateLesson} className="space-y-4 text-xs">
+              <div className="space-y-1.5">
+                <label className="font-medium text-stone-700">Lesson Title</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Navigating Somatic Stillness & Boundaries"
+                  value={newLessonTitle}
+                  onChange={(e) => setNewLessonTitle(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 focus:ring-1 focus:ring-rose-900"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-medium text-stone-700">Estimated Duration</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 20 mins"
+                  value={newLessonDuration}
+                  onChange={(e) => setNewLessonDuration(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 focus:ring-1 focus:ring-rose-900"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-medium text-stone-700">Brief Overview / Description</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Foundation inquiry into nervous system grounding."
+                  value={newLessonDescription}
+                  onChange={(e) => setNewLessonDescription(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 focus:ring-1 focus:ring-rose-900"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-medium text-stone-700">Lesson Content, Wisdom & Frameworks</label>
+                <textarea
+                  rows={6}
+                  required
+                  placeholder="Write the deep lesson content, guidance steps, somatic practices, and reflective context..."
+                  value={newLessonContent}
+                  onChange={(e) => setNewLessonContent(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 focus:ring-1 focus:ring-rose-900"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={() => setIsCreatingLesson(false)}
+                  className="px-4 py-2 rounded-xl text-stone-600 hover:bg-stone-100 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-stone-900 text-white font-semibold hover:bg-rose-950 shadow transition"
+                >
+                  Create & Add Lesson
                 </button>
               </div>
             </form>

@@ -17,7 +17,8 @@ import {
   Search,
   Filter,
   CalendarCheck,
-  UserCheck
+  UserCheck,
+  Trash2
 } from 'lucide-react';
 import { store } from '@/lib/store';
 import { Booking } from '@/types';
@@ -174,6 +175,30 @@ export default function AdminBookingsPage() {
       alert(`Error cancelling booking: ${err.message}`);
     }
   };
+
+  const handleDeleteBooking = async (id: string, customerName?: string) => {
+    const confirm = window.confirm(
+      `WARNING: Are you sure you want to permanently delete this booking for ${customerName || 'Client'}?\n\nThis will remove the session from the database.`
+    );
+    if (!confirm) return;
+
+    try {
+      const res = await fetch(`/api/admin/bookings?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE'
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to delete booking');
+      }
+
+      setBookings((prev) => prev.filter((b) => b.id !== id));
+      alert(`Booking ${id} was permanently deleted.`);
+    } catch (err: any) {
+      console.error('Delete booking failed:', err);
+      alert(`Delete failed: ${err.message}`);
+    }
+  };
+
 
   const filteredBookings = bookings.filter((b) => {
     const status = b.booking_status?.toUpperCase();
@@ -467,6 +492,15 @@ export default function AdminBookingsPage() {
                         Cancel
                       </button>
                     )}
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteBooking(b.id, b.customer_name)}
+                      className="p-2 rounded-xl border border-stone-200 text-stone-400 hover:text-rose-700 hover:bg-rose-50 transition"
+                      title="Permanently Delete Booking"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
               );

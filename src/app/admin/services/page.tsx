@@ -306,6 +306,30 @@ export default function AdminServicesPage() {
     }
   };
 
+  const handleDeleteService = async (serviceId: string, serviceName: string) => {
+    const confirm = window.confirm(
+      `WARNING: Are you sure you want to permanently delete "${serviceName}"?\n\nThis will remove the service and its materials from the system.`
+    );
+    if (!confirm) return;
+
+    try {
+      const res = await fetch(`/api/admin/services?id=${encodeURIComponent(serviceId)}`, {
+        method: 'DELETE'
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to delete service');
+      }
+
+      setServices((prev) => prev.filter((s) => s.id !== serviceId));
+      store.addAuditLog('SERVICE_DELETED', 'SERVICES', `Service "${serviceName}" (${serviceId}) deleted`);
+      alert(`Service "${serviceName}" was successfully deleted.`);
+    } catch (err: any) {
+      console.error('Delete service failed:', err);
+      alert(`Delete failed: ${err.message}`);
+    }
+  };
+
   const handleSendTestPdfEmail = async (srv: Service) => {
     const recipient = testEmailRecipient.trim() || prompt('Enter recipient email address for test PDF dispatch:', 'austinwanjala@gmail.com');
     if (!recipient) return;
@@ -494,6 +518,14 @@ export default function AdminServicesPage() {
                       title="Edit Service & Selar Mapping"
                     >
                       <Edit2 className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      onClick={() => handleDeleteService(srv.id, srv.name)}
+                      className="p-2 rounded-lg text-stone-400 hover:text-rose-700 hover:bg-rose-50 border border-stone-200 transition"
+                      title="Delete Service"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>

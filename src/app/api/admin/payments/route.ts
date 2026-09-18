@@ -133,3 +133,44 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    let orderId = searchParams.get('orderId') || searchParams.get('id');
+
+    if (!orderId) {
+      try {
+        const body = await request.json();
+        orderId = body.orderId || body.id;
+      } catch (_) {}
+    }
+
+    if (!orderId) {
+      return NextResponse.json({ error: 'Order ID is required.' }, { status: 400 });
+    }
+
+    const supabase = await createAdminClient();
+
+    // Delete associated entitlements and bookings if any
+    await supabase.from('entitlements').delete().eq('order_id', orderId);
+    await supabase.from('bookings').delete().eq('order_id', orderId);
+
+    // Delete order
+    const { error } = await supabase
+      .from('orders')
+      .delete()
+      .eq('id', orderId);
+
+    if (error) {
+      console.error('Error deleting order:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, message: `Order ${orderId} deleted successfully.` });
+  } catch (err: any) {
+    console.error('Unexpected error in DELETE /api/admin/payments:', err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+

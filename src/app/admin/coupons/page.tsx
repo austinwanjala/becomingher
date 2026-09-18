@@ -45,6 +45,16 @@ export default function AdminCouponsPage() {
     store.coupons = updated;
   };
 
+  const handleDeleteCoupon = (id: string, code: string) => {
+    const confirm = window.confirm(`Are you sure you want to permanently delete coupon "${code}"?`);
+    if (!confirm) return;
+
+    const updated = coupons.filter((c) => c.id !== id);
+    setCoupons(updated);
+    store.coupons = updated;
+    store.addAuditLog('COUPON_DELETED', 'COUPONS', `Coupon ${code} deleted`);
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -103,6 +113,14 @@ export default function AdminCouponsPage() {
                   }`}
                 >
                   {c.is_active ? 'Active' : 'Disabled'}
+                </button>
+
+                <button
+                  onClick={() => handleDeleteCoupon(c.id, c.code)}
+                  className="p-2 rounded-lg text-stone-400 hover:text-rose-700 hover:bg-rose-50 border border-stone-200 transition"
+                  title="Delete Coupon"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>

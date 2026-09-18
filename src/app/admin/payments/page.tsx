@@ -11,7 +11,8 @@ import {
   DollarSign,
   ArrowDownRight,
   ShieldCheck,
-  FileText
+  FileText,
+  Trash2
 } from 'lucide-react';
 import { Order } from '@/types';
 
@@ -129,6 +130,31 @@ export default function AdminPaymentsPage() {
       alert(`Error processing refund: ${err.message}`);
     }
   };
+
+  const handleDeleteOrder = async (order: Order) => {
+    const confirm = window.confirm(
+      `WARNING: Are you sure you want to permanently delete order "${order.order_reference}" (${order.customer_name || order.customer_email})?\n\nThis will purge the order, associated entitlements, and records from the database.`
+    );
+    if (!confirm) return;
+
+    try {
+      const res = await fetch(`/api/admin/payments?orderId=${encodeURIComponent(order.id)}`, {
+        method: 'DELETE'
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to delete order');
+      }
+
+      setOrders((prev) => prev.filter((o) => o.id !== order.id));
+      alert(`Order ${order.order_reference} was permanently deleted.`);
+      await fetchOrders();
+    } catch (err: any) {
+      console.error('Delete order failed:', err);
+      alert(`Delete failed: ${err.message}`);
+    }
+  };
+
 
   return (
     <div className="space-y-8">
@@ -335,6 +361,14 @@ export default function AdminPaymentsPage() {
                             Refund & Revoke
                           </button>
                         )}
+
+                        <button
+                          onClick={() => handleDeleteOrder(order)}
+                          className="p-1.5 rounded-lg border border-stone-200 text-stone-400 hover:text-rose-700 hover:bg-rose-50 transition inline-flex items-center"
+                          title="Delete Order"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </td>
                     </tr>
                   );
