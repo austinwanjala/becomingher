@@ -92,6 +92,12 @@ export default function AdminLoginPage({
                   <Label htmlFor="password" className="text-xs font-semibold text-stone-300">
                     Security Password
                   </Label>
+                  <Link
+                    href="/forgot-password"
+                    className="text-xs text-rose-300/80 hover:text-rose-200 transition"
+                  >
+                    Forgot password?
+                  </Link>
                 </div>
                 <div className="relative">
                   <Input

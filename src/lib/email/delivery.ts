@@ -521,3 +521,153 @@ export async function sendServicePdfEmail(params: SendServicePdfEmailParams): Pr
     timestamp: new Date().toISOString()
   };
 }
+
+/**
+ * Sends a luxury, branded Becoming Her password reset email with the recovery link.
+ */
+export async function sendPasswordResetEmail({
+  email,
+  resetLink,
+  recipientName
+}: {
+  email: string;
+  resetLink: string;
+  recipientName?: string;
+}): Promise<EmailDeliveryResult> {
+  const brandName = store.brand?.name || 'Becoming Her';
+  const name = recipientName || email.split('@')[0];
+  const capitalizedName = name.charAt(0).toUpperCase() + name.slice(1);
+  const currentYear = new Date().getFullYear();
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reset Your ${brandName} Password</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #FAF8F5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1c1917; line-height: 1.6;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #FAF8F5; padding: 32px 16px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; border-radius: 24px; border: 1px solid #e7e5e4; overflow: hidden; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);">
+          
+          <!-- Header Banner -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #1c1917 0%, #4c0519 50%, #1c1917 100%); padding: 36px 32px; text-align: center;">
+              <p style="margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 3px; color: #fef3c7; font-weight: 600;">
+                Personal Development & Coaching Sanctuary
+              </p>
+              <h1 style="margin: 8px 0 0; font-family: Georgia, serif; font-size: 28px; font-weight: normal; color: #ffffff; letter-spacing: 0.5px;">
+                ${brandName}
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Main Content -->
+          <tr>
+            <td style="padding: 36px 32px;">
+              <h2 style="margin: 0 0 16px; font-family: Georgia, serif; font-size: 22px; font-weight: 600; color: #1c1917;">
+                Password Reset Request
+              </h2>
+              
+              <p style="margin: 0 0 16px; font-size: 14px; color: #44403c;">
+                Hello <strong>${capitalizedName}</strong>,
+              </p>
+              
+              <p style="margin: 0 0 24px; font-size: 14px; color: #57534e; line-height: 1.7;">
+                We received a request to reset the password for your Becoming Her sanctuary account. Click the button below to establish a new password and resume your journey.
+              </p>
+
+              <!-- CTA Button -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin: 28px 0;">
+                <tr>
+                  <td align="center">
+                    <a href="${resetLink}" style="display: inline-block; background: linear-gradient(135deg, #4c0519 0%, #1c1917 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 9999px; font-weight: 600; font-size: 14px; letter-spacing: 0.3px; box-shadow: 0 4px 14px rgba(76, 5, 25, 0.25);">
+                      Reset My Password
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 0 0 16px; font-size: 12px; color: #78716c; line-height: 1.6;">
+                For your security, this password reset link is temporary and will expire in 1 hour.
+              </p>
+
+              <p style="margin: 0 0 20px; font-size: 12px; color: #a8a29e; word-break: break-all;">
+                If the button above does not work, copy and paste this link into your browser:<br/>
+                <a href="${resetLink}" style="color: #881337; text-decoration: underline;">${resetLink}</a>
+              </p>
+
+              <div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid #f5f5f4;">
+                <p style="margin: 0; font-size: 12px; color: #78716c;">
+                  If you did not request this password reset, please disregard this email. Your password and account remain completely secure.
+                </p>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #fafaf9; padding: 24px 32px; border-top: 1px solid #f5f5f4; text-align: center;">
+              <p style="margin: 0 0 8px; font-size: 11px; color: #78716c;">
+                © ${currentYear} ${brandName}. Dedicated to sovereign transformation & coaching mastery.
+              </p>
+              <p style="margin: 0; font-size: 10px; color: #a8a29e;">
+                Nairobi, Kenya • All rights reserved
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`;
+
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const emailFrom = process.env.EMAIL_FROM || 'Becoming Her <onboarding@resend.dev>';
+
+  if (resendApiKey) {
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: emailFrom,
+          to: [email],
+          subject: `✨ Reset Your Becoming Her Password`,
+          html: htmlContent
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || data.error || 'Resend reset email error');
+      }
+
+      store.addAuditLog('PASSWORD_RESET_EMAIL_SENT', 'AUTH', `Password reset email dispatched to ${email}`);
+      return {
+        success: true,
+        provider: 'RESEND',
+        message: `Password reset email sent to ${email}`,
+        timestamp: new Date().toISOString()
+      };
+    } catch (err: any) {
+      console.error('Error dispatching password reset via Resend:', err);
+    }
+  }
+
+  return {
+    success: true,
+    provider: 'SIMULATED',
+    message: `Password reset link generated for ${email}`,
+    timestamp: new Date().toISOString()
+  };
+}
+
