@@ -14,6 +14,7 @@ export type PaymentStatus =
 export type EntitlementStatus = 'ACTIVE' | 'EXPIRED' | 'REVOKED' | 'SUSPENDED';
 
 export type BookingStatus = 
+  | 'PENDING'
   | 'PENDING_PAYMENT' 
   | 'CONFIRMED' 
   | 'COMPLETED' 
@@ -33,10 +34,12 @@ export interface UserProfile {
 }
 
 export interface ServiceResource {
-  id: string;
+  id?: string;
   title: string;
-  file_name: string;
-  file_url: string;
+  file_name?: string;
+  file_url?: string;
+  url?: string;
+  description?: string;
   file_size?: string;
   file_type?: string;
 }
@@ -62,6 +65,7 @@ export interface Service {
   pdf_title?: string;
   resources?: ServiceResource[];
   questionnaire_template_url?: string;
+  questionnaire_url?: string;
   created_at: string;
   updated_at?: string;
 }

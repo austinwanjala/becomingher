@@ -176,8 +176,11 @@ export default function AdminBookingsPage() {
   };
 
   const filteredBookings = bookings.filter((b) => {
+    const status = b.booking_status?.toUpperCase();
     const matchesStatus =
-      statusFilter === 'ALL' || b.booking_status?.toUpperCase() === statusFilter;
+      statusFilter === 'ALL' ||
+      status === statusFilter ||
+      (statusFilter === 'PENDING' && (status === 'PENDING' || status === 'PENDING_PAYMENT'));
     const q = searchQuery.toLowerCase().trim();
     const matchesSearch =
       !q ||
@@ -191,7 +194,9 @@ export default function AdminBookingsPage() {
   });
 
   const confirmedCount = bookings.filter((b) => b.booking_status === 'CONFIRMED').length;
-  const pendingCount = bookings.filter((b) => b.booking_status === 'PENDING').length;
+  const pendingCount = bookings.filter(
+    (b) => b.booking_status === 'PENDING' || b.booking_status === 'PENDING_PAYMENT'
+  ).length;
   const cancelledCount = bookings.filter((b) => b.booking_status === 'CANCELLED').length;
 
   return (
