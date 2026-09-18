@@ -15,6 +15,16 @@ export function ForgotPasswordForm() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  useState(() => {
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      const error = url.searchParams.get('error');
+      if (error === 'expired') {
+        setErrorMessage('Your password reset link has expired or has already been used. Please enter your email below to request a new one.');
+      }
+    }
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || isLoading) return;

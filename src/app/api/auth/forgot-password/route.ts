@@ -1,6 +1,35 @@
 import { NextResponse } from 'next/server';
-import { createAdminClient, createClient } from '@/utils/supabase/server';
+import { createAdminClient } from '@/utils/supabase/server';
 import { sendPasswordResetEmail } from '@/lib/email/delivery';
+
+function getAppBaseUrl(request: Request): string {
+  // 1. If explicit environment variable is set and not localhost in production
+  const envUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (envUrl && !envUrl.includes('localhost')) {
+    return envUrl.startsWith('http') ? envUrl.replace(/\/$/, '') : `https://${envUrl}`.replace(/\/$/, '');
+  }
+
+  // 2. Vercel system production URL
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`.replace(/\/$/, '');
+  }
+
+  // 3. Request headers from incoming HTTP request
+  const forwardedHost = request.headers.get('x-forwarded-host');
+  const host = forwardedHost || request.headers.get('host');
+  const proto = request.headers.get('x-forwarded-proto') || (host && host.includes('localhost') ? 'http' : 'https');
+
+  if (host && !host.includes('localhost')) {
+    return `${proto}://${host}`.replace(/\/$/, '');
+  }
+
+  // 4. In local development
+  if (host && host.includes('localhost')) {
+    return `${proto}://${host}`.replace(/\/$/, '');
+  }
+
+  return 'https://becomingher-five.vercel.app';
+}
 
 export async function POST(request: Request) {
   try {
@@ -15,59 +44,40 @@ export async function POST(request: Request) {
     }
 
     const cleanEmail = email.trim().toLowerCase();
+    const baseUrl = getAppBaseUrl(request);
 
-    // Resolve base URL for password recovery redirection
-    const requestOrigin = request.headers.get('origin') || request.headers.get('host') || '';
-    let baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL || 'https://becomingher-five.vercel.app';
-
-    if (requestOrigin.startsWith('http')) {
-      baseUrl = requestOrigin;
-    } else if (requestOrigin && !baseUrl.includes('localhost')) {
-      baseUrl = `https://${requestOrigin}`;
-    }
-
-    if (!baseUrl.startsWith('http')) {
-      baseUrl = `https://${baseUrl}`;
-    }
-    baseUrl = baseUrl.replace(/\/$/, '');
-
-    const redirectTo = `${baseUrl}/auth/callback?next=/reset-password`;
-
-    // 1. Generate secure recovery action link via Supabase Admin
+    // 1. Generate secure recovery token hash via Supabase Admin
     const admin = await createAdminClient();
-    let actionLink: string | null = null;
+    let resetLink: string | null = null;
+    let recipientName: string | undefined = undefined;
 
     try {
       const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
         type: 'recovery',
         email: cleanEmail,
-        options: {
-          redirectTo
-        }
       });
 
-      if (!linkErr && linkData?.properties?.action_link) {
-        actionLink = linkData.properties.action_link;
+      if (linkErr) {
+        console.warn('generateLink warning:', linkErr.message);
+      } else if (linkData?.properties?.hashed_token) {
+        // Direct link to our own app auth callback with token_hash.
+        // This ensures the link stays on our domain (e.g. becomingher-five.vercel.app)
+        // and never redirects through localhost:3000!
+        resetLink = `${baseUrl}/auth/callback?token_hash=${linkData.properties.hashed_token}&type=recovery&next=/reset-password`;
+        recipientName = linkData.user?.user_metadata?.name;
+      } else if (linkData?.properties?.action_link) {
+        resetLink = linkData.properties.action_link;
       }
     } catch (adminErr) {
-      console.warn('generateLink warning:', adminErr);
+      console.warn('admin generateLink exception:', adminErr);
     }
 
-    // 2. Also trigger standard Supabase password recovery
-    try {
-      const supabase = await createClient();
-      await supabase.auth.resetPasswordForEmail(cleanEmail, {
-        redirectTo
-      });
-    } catch (standardErr) {
-      console.warn('resetPasswordForEmail warning:', standardErr);
-    }
-
-    // 3. If action link is available, dispatch branded email via Resend
-    if (actionLink) {
+    // 2. Dispatch branded email via Resend with the verified link
+    if (resetLink) {
       await sendPasswordResetEmail({
         email: cleanEmail,
-        resetLink: actionLink
+        resetLink,
+        recipientName
       });
     }
 
@@ -84,3 +94,4 @@ export async function POST(request: Request) {
     );
   }
 }
+

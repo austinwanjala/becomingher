@@ -24,6 +24,41 @@ export function ResetPasswordForm() {
   useEffect(() => {
     const supabase = createClient();
 
+    // Check for query parameters or hash in browser
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      const token_hash = url.searchParams.get('token_hash');
+      const type = (url.searchParams.get('type') as any) || 'recovery';
+      const code = url.searchParams.get('code');
+      const errorParam = url.searchParams.get('error') || url.searchParams.get('error_description');
+
+      if (errorParam) {
+        setErrorMessage('Your password reset link is invalid or has expired. Please request a new one.');
+      }
+
+      if (token_hash) {
+        supabase.auth.verifyOtp({ token_hash, type }).then(({ data, error }) => {
+          if (!error && data.session) {
+            setSessionReady(true);
+            setErrorMessage(null);
+          } else if (error) {
+            console.error('verifyOtp error on reset page:', error);
+            setErrorMessage('Your reset link has expired or is invalid. Please request a new one.');
+          }
+        });
+      } else if (code) {
+        supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+          if (!error && data.session) {
+            setSessionReady(true);
+            setErrorMessage(null);
+          } else if (error) {
+            console.error('exchangeCode error on reset page:', error);
+            setErrorMessage('Your reset link has expired or is invalid. Please request a new one.');
+          }
+        });
+      }
+    }
+
     // Check if session exists or listen for password recovery event
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
