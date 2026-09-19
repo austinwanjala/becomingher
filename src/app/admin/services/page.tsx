@@ -411,7 +411,7 @@ export default function AdminServicesPage() {
             <span className="font-semibold text-amber-200 block">Required Environment Variables:</span>
             <div className="font-mono text-[11px] text-amber-100/90 space-y-0.5">
               <div>RESEND_API_KEY=re_your_api_key</div>
-              <div>EMAIL_FROM=Becoming Her &lt;onboarding@resend.dev&gt;</div>
+              <div>EMAIL_FROM=Becoming Her &lt;hello@becomingherafrica.com&gt;</div>
             </div>
           </div>
 

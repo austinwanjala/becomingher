@@ -373,7 +373,7 @@ export async function sendServicePdfEmail(params: SendServicePdfEmailParams): Pr
   const finalPdf = pdfAsset;
 
   const resendApiKey = process.env.RESEND_API_KEY;
-  const emailFrom = process.env.EMAIL_FROM || 'Becoming Her <onboarding@resend.dev>';
+  const emailFrom = process.env.EMAIL_FROM || 'Becoming Her <hello@becomingherafrica.com>';
 
   // Ensure base URL is correctly formatted
   let baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL || 'https://becomingher-five.vercel.app';
@@ -629,7 +629,7 @@ export async function sendPasswordResetEmail({
 `;
 
   const resendApiKey = process.env.RESEND_API_KEY;
-  const emailFrom = process.env.EMAIL_FROM || 'Becoming Her <onboarding@resend.dev>';
+  const emailFrom = process.env.EMAIL_FROM || 'Becoming Her <hello@becomingherafrica.com>';
 
   if (resendApiKey) {
     try {
@@ -930,7 +930,7 @@ export async function sendAdminOrderNotificationEmail(
   `;
 
   const resendApiKey = process.env.RESEND_API_KEY;
-  const emailFrom = process.env.EMAIL_FROM || 'Becoming Her <onboarding@resend.dev>';
+  const emailFrom = process.env.EMAIL_FROM || 'Becoming Her <hello@becomingherafrica.com>';
 
   if (resendApiKey) {
     try {
