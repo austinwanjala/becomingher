@@ -107,6 +107,7 @@ export async function getUserRole(
       email.startsWith('superadmin') ||
       email.startsWith('zipporah') ||
       email.endsWith('@becomingher.co.ke') ||
+      email.endsWith('@becomingherafrica.com') ||
       email.endsWith('@becomingher.com')
     ) {
       return 'ADMIN';

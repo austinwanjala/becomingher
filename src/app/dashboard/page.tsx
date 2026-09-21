@@ -250,7 +250,7 @@ export default function DashboardOverviewPage() {
                   >
                     <span className="text-[10px] font-bold text-rose-800 uppercase block">KES 1,000</span>
                     <span className="text-xs font-semibold text-stone-900 group-hover:text-rose-950 block">Guided Programme</span>
-                    <span className="text-[10px] text-stone-500 block">4 Weeks / 12 Lessons</span>
+                    <span className="text-[10px] text-stone-500 block">6 Weeks / 12 Lessons</span>
                   </Link>
                   <Link
                     href="/checkout/srv-custom-02"

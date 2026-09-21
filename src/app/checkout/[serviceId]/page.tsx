@@ -128,7 +128,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ serviceId: 
   };
 
   // Submit checkout handler
-  const handleCheckout = async (e: React.FormEvent, simulateInstantSuccess: boolean = false) => {
+  const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
@@ -180,22 +180,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ serviceId: 
         throw new Error(data.error || 'Checkout initialization failed');
       }
 
-      if (simulateInstantSuccess) {
-        // Direct simulation for local verification without waiting for live card input
-        await fetch('/api/payments/verify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderId: data.orderId,
-            transactionReference: data.transactionReference
-          })
-        });
-
-        router.push(`/payment/return?order_id=${data.orderId}&service_id=${service.id}`);
-        return;
-      }
-
-      // In normal mode, redirect to the Selar checkout page
+      // Redirect to the Selar checkout page
       if (data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
       } else {
@@ -500,15 +485,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ serviceId: 
                     </Link>
                   )}
 
-                  {/* Dev / Instant Test Flow Button */}
-                  <button
-                    type="button"
-                    onClick={(e) => handleCheckout(e, true)}
-                    disabled={isLoading}
-                    className="w-full py-2.5 rounded-xl border border-dashed border-stone-300 text-stone-600 hover:text-stone-950 hover:bg-stone-50 text-xs font-medium transition"
-                  >
-                    ⚡ Simulate Instant Verified Payment (Testing Sandbox)
-                  </button>
+
                 </div>
               </div>
             </form>

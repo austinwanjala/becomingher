@@ -51,12 +51,12 @@ class Store {
       slug: 'guided-coaching',
       type: 'DIGITAL_PROGRAMME',
       name: 'Guided Digital Coaching Programme',
-      short_description: 'A 4-week structured transformative coaching journey designed for women stepping into clarity, intentionality, and personal mastery.',
+      short_description: 'A 6-week structured transformative coaching journey designed for women stepping into clarity, intentionality, and personal mastery.',
       description: 'The Guided Digital Coaching Programme is an immersive, self-paced yet deeply guided development experience. Structured across four progressive modules, it blends reflective inquiries, habit frameworks, actionable exercises, and embedded reflective coaching support to help you unlock the woman you are becoming.',
       price: 1000,
       currency: 'KES',
       image_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=800',
-      duration: '4 Modules (Self-Paced / 4 Weeks)',
+      duration: '6 Weeks (Self-Paced)',
       is_active: true,
       is_featured: true,
       features: [
@@ -492,7 +492,7 @@ class Store {
     {
       id: 'faq-05',
       question: 'Can I do the Guided Programme at my own pace?',
-      answer: 'Yes! While designed around a 4-week progression, your enrollment never expires. You can revisit lessons, update reflections, and re-engage with the material as often as you need.',
+      answer: 'Yes! While designed around a 6-week progression, your enrollment never expires. You can revisit lessons, update reflections, and re-engage with the material as often as you need.',
       category: 'Programmes',
       order: 5,
       is_published: true

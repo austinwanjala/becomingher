@@ -36,7 +36,7 @@ export default function AdminServicesPage() {
   const [type, setType] = useState<ServiceType>('DIGITAL_PROGRAMME');
   const [price, setPrice] = useState(1000);
   const [currency, setCurrency] = useState('KES');
-  const [duration, setDuration] = useState('4 Weeks');
+  const [duration, setDuration] = useState('6 Weeks');
   const [shortDesc, setShortDesc] = useState('');
   const [description, setDescription] = useState('');
   const [selarProductId, setSelarProductId] = useState('v09683c927');

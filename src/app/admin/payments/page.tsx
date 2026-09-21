@@ -12,9 +12,13 @@ import {
   ArrowDownRight,
   ShieldCheck,
   FileText,
-  Trash2
+  Trash2,
+  Zap,
+  X,
+  Loader2
 } from 'lucide-react';
-import { Order } from '@/types';
+import { Order, Service } from '@/types';
+import { getServices } from '@/lib/services';
 
 export default function AdminPaymentsPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -36,6 +40,19 @@ export default function AdminPaymentsPage() {
   const [manualReason, setManualReason] = useState('Customer confirmed payment via Selar dashboard receipt.');
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Payment Simulation Sandbox State
+  const [isSimulateModalOpen, setIsSimulateModalOpen] = useState(false);
+  const [availableServices, setAvailableServices] = useState<Service[]>([]);
+  const [simServiceId, setSimServiceId] = useState('');
+  const [simCustomerName, setSimCustomerName] = useState('Test Admin Client');
+  const [simCustomerEmail, setSimCustomerEmail] = useState('austinwanjala@gmail.com');
+  const [simCustomerPhone, setSimCustomerPhone] = useState('+254 700 000 000');
+  const [simBookingDate, setSimBookingDate] = useState('2026-09-25');
+  const [simBookingTime, setSimBookingTime] = useState('10:00 AM (EAT)');
+  const [simNotes, setSimNotes] = useState('Admin sandbox testing');
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [simResultMsg, setSimResultMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   const fetchOrders = async () => {
     setLoading(true);
     setError(null);
@@ -56,6 +73,12 @@ export default function AdminPaymentsPage() {
 
   useEffect(() => {
     fetchOrders();
+    getServices().then((srvs) => {
+      if (srvs && srvs.length > 0) {
+        setAvailableServices(srvs);
+        setSimServiceId(srvs[0].id);
+      }
+    });
   }, []);
 
   // Filtered orders with robust null-safety
@@ -156,6 +179,45 @@ export default function AdminPaymentsPage() {
   };
 
 
+  const handleSimulatePayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!simServiceId) return;
+    setIsSimulating(true);
+    setSimResultMsg(null);
+
+    try {
+      const res = await fetch('/api/admin/payments/simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serviceId: simServiceId,
+          customerName: simCustomerName,
+          customerEmail: simCustomerEmail,
+          customerPhone: simCustomerPhone,
+          bookingDate: simBookingDate,
+          bookingTime: simBookingTime,
+          bookingNotes: simNotes
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to simulate payment');
+
+      setSimResultMsg({
+        type: 'success',
+        text: `✓ ${data.message}`
+      });
+      await fetchOrders();
+    } catch (err: any) {
+      setSimResultMsg({
+        type: 'error',
+        text: err.message || 'Payment simulation failed'
+      });
+    } finally {
+      setIsSimulating(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -169,14 +231,27 @@ export default function AdminPaymentsPage() {
           </p>
         </div>
 
-        <button
-          onClick={fetchOrders}
-          disabled={loading}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-stone-200 text-stone-800 text-xs font-semibold hover:bg-stone-50 transition shadow-sm self-start sm:self-auto"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-rose-800' : 'text-stone-500'}`} />
-          <span>{loading ? 'Refreshing...' : 'Refresh Payments'}</span>
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={() => {
+              setIsSimulateModalOpen(true);
+              setSimResultMsg(null);
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold hover:bg-amber-100 transition shadow-sm"
+          >
+            <Zap className="w-3.5 h-3.5 text-amber-600 fill-amber-600" />
+            <span>Simulate Test Payment</span>
+          </button>
+
+          <button
+            onClick={fetchOrders}
+            disabled={loading}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-stone-200 text-stone-800 text-xs font-semibold hover:bg-stone-50 transition shadow-sm"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-rose-800' : 'text-stone-500'}`} />
+            <span>{loading ? 'Refreshing...' : 'Refresh Payments'}</span>
+          </button>
+        </div>
       </div>
 
       {/* KPI Metrics Cards */}
@@ -426,6 +501,176 @@ export default function AdminPaymentsPage() {
                   className="px-5 py-2 rounded-xl bg-stone-900 text-white font-semibold hover:bg-rose-950 transition shadow disabled:opacity-50"
                 >
                   {isProcessing ? 'Verifying...' : 'Authorize & Unlock Service'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Payment & Order Testing Sandbox Modal */}
+      {isSimulateModalOpen && (
+        <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white max-w-lg w-full rounded-3xl p-6 sm:p-8 border border-stone-200 shadow-2xl space-y-5 my-8">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center">
+                  <Zap className="w-4 h-4 fill-amber-700 text-amber-700" />
+                </div>
+                <div>
+                  <h3 className="font-serif text-lg font-semibold text-stone-900">
+                    Payment & Order Testing Sandbox
+                  </h3>
+                  <p className="text-[11px] text-stone-500">
+                    Admin test tool — simulates a verified order, unlocks entitlements, and dispatches fulfillment materials.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsSimulateModalOpen(false)}
+                className="text-stone-400 hover:text-stone-600 p-1 rounded-lg hover:bg-stone-100 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {simResultMsg && (
+              <div
+                className={`p-3.5 rounded-2xl text-xs font-medium ${
+                  simResultMsg.type === 'success'
+                    ? 'bg-emerald-50 text-emerald-900 border border-emerald-200'
+                    : 'bg-rose-50 text-rose-900 border border-rose-200'
+                }`}
+              >
+                {simResultMsg.text}
+              </div>
+            )}
+
+            <form onSubmit={handleSimulatePayment} className="space-y-4 text-xs">
+              <div className="space-y-1.5">
+                <label className="font-semibold text-stone-800">Select Coaching Service</label>
+                <select
+                  value={simServiceId}
+                  onChange={(e) => setSimServiceId(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 text-stone-900 bg-white"
+                  required
+                >
+                  {availableServices.map((srv) => (
+                    <option key={srv.id} value={srv.id}>
+                      {srv.name} — {srv.currency} {srv.price.toLocaleString()} ({srv.duration})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-stone-800">Customer Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={simCustomerName}
+                    onChange={(e) => setSimCustomerName(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300"
+                    placeholder="e.g. Valued Client"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-stone-800">Customer Email (Receives PDF)</label>
+                  <input
+                    type="email"
+                    required
+                    value={simCustomerEmail}
+                    onChange={(e) => setSimCustomerEmail(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300"
+                    placeholder="client@example.com"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-semibold text-stone-800">Customer Phone (Optional)</label>
+                <input
+                  type="text"
+                  value={simCustomerPhone}
+                  onChange={(e) => setSimCustomerPhone(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300"
+                  placeholder="+254 700 000 000"
+                />
+              </div>
+
+              {availableServices.find((s) => s.id === simServiceId)?.type === 'INTERPERSONAL_SESSION' && (
+                <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200/80 space-y-3">
+                  <span className="font-semibold text-amber-950 block">Interpersonal Session Booking Details:</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] text-stone-600 block mb-1">Session Date</label>
+                      <input
+                        type="date"
+                        value={simBookingDate}
+                        onChange={(e) => setSimBookingDate(e.target.value)}
+                        className="w-full px-3 py-1.5 rounded-xl border border-stone-300 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] text-stone-600 block mb-1">Session Time</label>
+                      <input
+                        type="text"
+                        value={simBookingTime}
+                        onChange={(e) => setSimBookingTime(e.target.value)}
+                        className="w-full px-3 py-1.5 rounded-xl border border-stone-300 bg-white"
+                        placeholder="10:00 AM (EAT)"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="font-semibold text-stone-800">Simulation Notes</label>
+                <input
+                  type="text"
+                  value={simNotes}
+                  onChange={(e) => setSimNotes(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300"
+                  placeholder="Testing payment verification and email dispatch"
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 text-[11px] text-stone-600 space-y-1">
+                <p><strong>Sandbox Verification Workflow:</strong></p>
+                <ul className="list-disc list-inside space-y-0.5 text-stone-500">
+                  <li>Creates a verified order marked as <code>SELAR_SIMULATED</code>.</li>
+                  <li>Unlocks the customer entitlement in the member dashboard.</li>
+                  <li>Dispatches the service PDF via Resend from <code>hello@becomingherafrica.com</code>.</li>
+                  <li>Sends the admin notification email and records an audit log entry.</li>
+                </ul>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={() => setIsSimulateModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-stone-600 hover:bg-stone-100 font-medium"
+                >
+                  Close
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSimulating}
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold transition shadow disabled:opacity-50"
+                >
+                  {isSimulating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Simulating & Fulfilling...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-4 h-4 fill-white" />
+                      <span>Run Test Order & Payment</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
