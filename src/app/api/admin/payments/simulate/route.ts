@@ -161,7 +161,7 @@ export async function POST(request: Request) {
         booking: bookingId ? {
           scheduledDate: bookingDate || '2026-09-25',
           startTime: bookingTime || '10:00 AM (EAT)',
-          meetingLink,
+          meetingLink: meetingLink || 'https://meet.google.com/bch-consultation',
           coachName: store.coach.name
         } : undefined
       });

@@ -229,7 +229,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ serviceId: 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           {/* Left Column: Customer Details & Booking Slot */}
           <div className="lg:col-span-7 space-y-8">
-            <form onSubmit={(e) => handleCheckout(e, false)} className="space-y-8">
+            <form onSubmit={handleCheckout} className="space-y-8">
               
               {/* Account Status / Requirement Card */}
               {authChecked && (

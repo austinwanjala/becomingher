@@ -25,7 +25,7 @@ export interface SendServicePdfEmailParams {
   booking?: {
     scheduledDate: string;
     startTime: string;
-    meetingLink: string;
+    meetingLink?: string;
     coachName?: string;
     isResend?: boolean;
     isUpdatedLink?: boolean;
@@ -85,7 +85,7 @@ function buildServicePdfEmailHtml({
   booking?: {
     scheduledDate: string;
     startTime: string;
-    meetingLink: string;
+    meetingLink?: string;
     coachName?: string;
     isResend?: boolean;
     isUpdatedLink?: boolean;
