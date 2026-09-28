@@ -7,6 +7,9 @@ import { ServiceDisclaimer } from '@/components/DisclaimerModal';
 import { getServiceBySlug } from '@/lib/services';
 import { notFound } from 'next/navigation';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function CustomCoachingPage() {
   const service = await getServiceBySlug('custom-coaching');
   if (!service) return notFound();

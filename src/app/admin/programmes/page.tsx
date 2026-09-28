@@ -293,7 +293,11 @@ export default function AdminProgrammesPage() {
       setSelectedModuleId(reordered[0]?.id || '');
     }
 
-    await saveProgramme(updatedProg);
+    const saveResult = await saveProgramme(updatedProg);
+    if (!saveResult.success) {
+      alert(`Failed to delete module on server: ${saveResult.error || 'Unknown error'}`);
+      return;
+    }
     store.addAuditLog('MODULE_DELETED', 'CURRICULUM', `Module "${modTitle}" deleted from ${programme.title}`);
   };
 

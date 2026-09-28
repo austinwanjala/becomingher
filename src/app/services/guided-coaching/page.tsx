@@ -8,12 +8,17 @@ import { getServiceBySlug } from '@/lib/services';
 import { getProgrammeByServiceId } from '@/lib/programmes';
 import { notFound } from 'next/navigation';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function GuidedCoachingPage() {
   const service = await getServiceBySlug('guided-coaching');
   if (!service) return notFound();
   
   const programme = await getProgrammeByServiceId(service.id);
   if (!programme) return notFound();
+
+  const safeModules = Array.isArray(programme.modules) ? programme.modules : [];
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF8F5] text-stone-900">
@@ -98,51 +103,63 @@ export default async function GuidedCoachingPage() {
               Programme Curriculum & Architecture
             </h2>
             <p className="text-xs sm:text-sm text-stone-600">
-              Four progressive modules designed for deep unlearning, self-trust, and sovereign embodiment.
+              {safeModules.length > 0
+                ? `${safeModules.length} progressive ${safeModules.length === 1 ? 'module' : 'modules'} designed for deep unlearning, self-trust, and sovereign embodiment.`
+                : 'Curriculum modules and lesson materials are currently being updated.'}
             </p>
           </div>
 
           <div className="space-y-6">
-            {programme.modules.map((module) => (
-              <div
-                key={module.id}
-                className="bg-white p-6 sm:p-8 rounded-2xl border border-stone-200/90 shadow-sm space-y-4"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-3">
-                  <h3 className="font-serif text-lg sm:text-xl font-semibold text-stone-900">
-                    {module.title}
-                  </h3>
-                  <span className="text-xs text-rose-800 font-medium bg-rose-50 px-2.5 py-1 rounded-full">
-                    {module.lessons.length} Guided Lessons • {module.reflection_questions.length} Reflections
-                  </span>
-                </div>
-
-                <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
-                  {module.description}
-                </p>
-
-                {/* Lessons in module */}
-                <div className="space-y-2 pt-2">
-                  <span className="text-xs font-semibold text-stone-900 block uppercase tracking-wider">
-                    Included Lessons:
-                  </span>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {module.lessons.map((lesson) => (
-                      <div
-                        key={lesson.id}
-                        className="p-3 rounded-xl bg-stone-50 border border-stone-100 flex items-start gap-2.5 text-xs"
-                      >
-                        <FileText className="w-4 h-4 text-rose-800 shrink-0 mt-0.5" />
-                        <div>
-                          <p className="font-medium text-stone-900">{lesson.title}</p>
-                          <p className="text-stone-500 text-[11px]">{lesson.duration}</p>
-                        </div>
-                      </div>
-                    ))}
+            {safeModules.length > 0 ? (
+              safeModules.map((module) => (
+                <div
+                  key={module.id}
+                  className="bg-white p-6 sm:p-8 rounded-2xl border border-stone-200/90 shadow-sm space-y-4"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-3">
+                    <h3 className="font-serif text-lg sm:text-xl font-semibold text-stone-900">
+                      {module.title}
+                    </h3>
+                    <span className="text-xs text-rose-800 font-medium bg-rose-50 px-2.5 py-1 rounded-full">
+                      {(module.lessons || []).length} Guided Lessons • {(module.reflection_questions || []).length} Reflections
+                    </span>
                   </div>
+
+                  {module.description && (
+                    <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
+                      {module.description}
+                    </p>
+                  )}
+
+                  {/* Lessons in module */}
+                  {(module.lessons || []).length > 0 && (
+                    <div className="space-y-2 pt-2">
+                      <span className="text-xs font-semibold text-stone-900 block uppercase tracking-wider">
+                        Included Lessons:
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {module.lessons.map((lesson) => (
+                          <div
+                            key={lesson.id}
+                            className="p-3 rounded-xl bg-stone-50 border border-stone-100 flex items-start gap-2.5 text-xs"
+                          >
+                            <FileText className="w-4 h-4 text-rose-800 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="font-medium text-stone-900">{lesson.title}</p>
+                              <p className="text-stone-500 text-[11px]">{lesson.duration}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
+              ))
+            ) : (
+              <div className="bg-white p-8 rounded-2xl border border-stone-200 text-center text-stone-500 text-sm">
+                No active modules are currently published for this programme. Enrolled members will receive access when new stages are released.
               </div>
-            ))}
+            )}
           </div>
 
           {/* Included Materials & Resources */}

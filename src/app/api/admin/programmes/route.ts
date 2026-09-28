@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/server';
+import { revalidatePath } from 'next/cache';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET() {
   try {
@@ -40,7 +44,7 @@ export async function POST(request: Request) {
       image_url: programme.image_url,
       is_published: programme.is_published ?? true,
       book: programme.book || null,
-      modules: programme.modules || [],
+      modules: Array.isArray(programme.modules) ? programme.modules : [],
       updated_at: new Date().toISOString()
     };
 
@@ -53,6 +57,21 @@ export async function POST(request: Request) {
     if (error) {
       console.error('Error in upserting programme:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Comprehensive cache invalidation across public frontend & dashboard
+    try {
+      revalidatePath('/', 'layout');
+      revalidatePath('/services/guided-coaching');
+      revalidatePath('/services/interpersonal-coaching');
+      revalidatePath('/services/custom-coaching');
+      revalidatePath('/services');
+      revalidatePath('/dashboard/programmes');
+      revalidatePath('/dashboard/programmes/[id]', 'page');
+      revalidatePath('/pricing');
+      revalidatePath('/');
+    } catch (revErr) {
+      console.warn('Cache revalidation notice:', revErr);
     }
 
     return NextResponse.json({ success: true, programme: data });
@@ -89,10 +108,21 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // Comprehensive cache invalidation
+    try {
+      revalidatePath('/', 'layout');
+      revalidatePath('/services/guided-coaching');
+      revalidatePath('/services');
+      revalidatePath('/dashboard/programmes');
+      revalidatePath('/pricing');
+      revalidatePath('/');
+    } catch (revErr) {
+      console.warn('Cache revalidation notice:', revErr);
+    }
+
     return NextResponse.json({ success: true, message: `Programme ${id} deleted successfully.` });
   } catch (err: any) {
     console.error('Unexpected error in DELETE /api/admin/programmes:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
-

@@ -3,9 +3,14 @@ import { Star, CheckCircle2, Clock, ArrowRight, ShieldCheck } from 'lucide-react
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { store } from '@/lib/store';
+import { getServices } from '@/lib/services';
 
-export default function ServicesPage() {
-  const services = store.getServices();
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+export default async function ServicesPage() {
+  const dbServices = await getServices();
+  const services = dbServices && dbServices.length > 0 ? dbServices : store.getServices();
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF8F5] text-stone-900">

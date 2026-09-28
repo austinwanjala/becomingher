@@ -3,9 +3,14 @@ import { Gem, CheckCircle2, ShieldCheck, Tag } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { store } from '@/lib/store';
+import { getServices } from '@/lib/services';
 
-export default function PricingPage() {
-  const services = store.getServices();
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+export default async function PricingPage() {
+  const dbServices = await getServices();
+  const services = dbServices && dbServices.length > 0 ? dbServices : store.getServices();
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF8F5] text-stone-900">

@@ -14,12 +14,19 @@ import {
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { store } from '@/lib/store';
+import { getServices } from '@/lib/services';
 import { getSettings } from '@/utils/settings';
 import { HiddenCostCalculator } from '@/components/HiddenCostCalculator';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function HomePage() {
-  const { cms } = await getSettings();
-  const services = store.getServices();
+  const [{ cms }, dbServices] = await Promise.all([
+    getSettings(),
+    getServices()
+  ]);
+  const services = dbServices && dbServices.length > 0 ? dbServices : store.getServices();
   const testimonials = store.testimonials.filter((t) => t.is_published);
   const faqs = store.faqs.filter((f) => f.is_published);
 
