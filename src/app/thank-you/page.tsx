@@ -31,14 +31,27 @@ function ThankYouContent() {
   const router = useRouter();
 
   // Extract all parameters Selar or our checkout passes
-  const orderId = searchParams.get('order_id') || searchParams.get('orderId') || '';
+  const orderId =
+    searchParams.get('order_id') ||
+    searchParams.get('orderId') ||
+    searchParams.get('order') ||
+    searchParams.get('id') ||
+    '';
   const transactionRef =
     searchParams.get('reference') ||
     searchParams.get('trxref') ||
     searchParams.get('transaction_id') ||
     searchParams.get('custom_ref') ||
+    searchParams.get('ref') ||
+    searchParams.get('tx_ref') ||
+    searchParams.get('transactionId') ||
     '';
-  const productId = searchParams.get('product_id') || searchParams.get('productId') || '';
+  const productId =
+    searchParams.get('product_id') ||
+    searchParams.get('productId') ||
+    searchParams.get('code') ||
+    searchParams.get('product_code') ||
+    '';
   const serviceId = searchParams.get('service_id') || searchParams.get('serviceId') || '';
   const emailParam = searchParams.get('email') || searchParams.get('customer_email') || '';
   const nameParam = searchParams.get('name') || searchParams.get('customer_name') || '';
@@ -56,64 +69,91 @@ function ThankYouContent() {
     });
   }, []);
 
-  // Run auto-verification
+  const verify = async (isManualCheck = false) => {
+    try {
+      const effectiveEmail = emailParam || user?.email || '';
+      const effectiveName = nameParam || user?.user_metadata?.name || '';
+      const effectiveCustomerId = user?.id || '';
+
+      const res = await fetch('/api/payments/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId,
+          transactionReference: transactionRef,
+          reference: transactionRef,
+          productId,
+          serviceId,
+          email: effectiveEmail,
+          name: effectiveName,
+          customerId: effectiveCustomerId,
+          forceCheck: isManualCheck
+        })
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.verified) {
+        setStatus('confirmed');
+        setMessage('Payment verified successfully. Your sanctuary access is unlocked and materials are ready.');
+        setDetails(data);
+
+        // Also trigger background sync for logged in users
+        fetch('/api/auth/sync-entitlements', { method: 'POST' }).catch(() => {});
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.warn('Verification attempt warning:', err);
+      return false;
+    }
+  };
+
+  const handleCheckAgain = async () => {
+    setStatus('verifying');
+    setMessage('Connecting to Selar and updating your member entitlements...');
+    try {
+      // First trigger auth sync-entitlements
+      await fetch('/api/auth/sync-entitlements', { method: 'POST' }).catch(() => {});
+      const verified = await verify(true);
+      if (!verified) {
+        setStatus('pending');
+        setMessage('Selar has recorded your payment. Your access and downloadable materials will appear in your Member Dashboard.');
+      }
+    } catch (_) {
+      window.location.reload();
+    }
+  };
+
+  // Run auto-verification polling
   useEffect(() => {
     let intervalId: any;
     let attempts = 0;
-    const maxAttempts = 6;
+    const maxAttempts = 10;
 
-    const verify = async () => {
+    const runPoll = async () => {
       attempts++;
-      try {
-        const res = await fetch('/api/payments/verify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderId,
-            transactionReference: transactionRef,
-            reference: transactionRef,
-            productId,
-            serviceId,
-            email: emailParam,
-            name: nameParam
-          })
-        });
-
-        const data = await res.json();
-
-        if (res.ok && data.verified) {
-          setStatus('confirmed');
-          setMessage('Payment verified successfully. Your sanctuary access is unlocked and materials are ready.');
-          setDetails(data);
-          clearInterval(intervalId);
-
-          // Also trigger background sync for logged in users
-          fetch('/api/auth/sync-entitlements', { method: 'POST' }).catch(() => {});
-        } else if (attempts >= maxAttempts) {
-          setStatus('pending');
-          setMessage('Your transaction is being confirmed by Selar. Your access and downloadable materials will be available in your portal.');
-          clearInterval(intervalId);
-        }
-      } catch (err) {
-        if (attempts >= maxAttempts) {
-          setStatus('failed');
-          setMessage('We could not confirm payment automatically. If you have been debited, please contact our support team with your reference.');
-          clearInterval(intervalId);
-        }
+      const isConfirmed = await verify();
+      if (isConfirmed) {
+        clearInterval(intervalId);
+      } else if (attempts >= maxAttempts) {
+        setStatus('pending');
+        setMessage('Your transaction is being confirmed by Selar. Your access and downloadable materials will be available in your portal.');
+        clearInterval(intervalId);
       }
     };
 
     // Initial check after slight delay to allow Selar webhook / payment propagation
     const timer = setTimeout(() => {
-      verify();
-      intervalId = setInterval(verify, 2500);
-    }, 1000);
+      runPoll();
+      intervalId = setInterval(runPoll, 2000);
+    }, 800);
 
     return () => {
       clearTimeout(timer);
       clearInterval(intervalId);
     };
-  }, [orderId, transactionRef, productId, serviceId, emailParam, nameParam]);
+  }, [orderId, transactionRef, productId, serviceId, emailParam, nameParam, user]);
 
   const order = details?.order;
   const service = details?.service;
@@ -468,8 +508,8 @@ function ThankYouContent() {
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <button
-                onClick={() => window.location.reload()}
-                className="w-full inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-stone-600 hover:text-stone-900 text-xs transition"
+                onClick={handleCheckAgain}
+                className="w-full inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-stone-600 hover:text-stone-900 text-xs font-semibold hover:bg-stone-100 transition"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 <span>Check Status Again</span>

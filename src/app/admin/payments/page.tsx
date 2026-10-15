@@ -39,6 +39,26 @@ export default function AdminPaymentsPage() {
   const [verifyingOrder, setVerifyingOrder] = useState<Order | null>(null);
   const [manualReason, setManualReason] = useState('Customer confirmed payment via Selar dashboard receipt.');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isReconciling, setIsReconciling] = useState(false);
+
+  const handleAutoReconcile = async () => {
+    setIsReconciling(true);
+    try {
+      const res = await fetch('/api/admin/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reconcile_all' })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to auto-reconcile');
+      alert(data.message || `Reconciliation complete. ${data.reconciledCount || 0} order(s) updated.`);
+      await fetchOrders();
+    } catch (err: any) {
+      alert(`Auto-reconciliation notice: ${err.message}`);
+    } finally {
+      setIsReconciling(false);
+    }
+  };
 
   // Payment Simulation Sandbox State
   const [isSimulateModalOpen, setIsSimulateModalOpen] = useState(false);
@@ -231,7 +251,17 @@ export default function AdminPaymentsPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={handleAutoReconcile}
+            disabled={isReconciling || loading}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold hover:bg-emerald-100 transition shadow-sm disabled:opacity-50"
+            title="Scan and auto-verify all pending orders against Selar settlement API"
+          >
+            <ShieldCheck className={`w-3.5 h-3.5 ${isReconciling ? 'animate-spin text-emerald-800' : 'text-emerald-700'}`} />
+            <span>{isReconciling ? 'Auto-Reconciling...' : 'Auto-Reconcile with Selar'}</span>
+          </button>
+
           <button
             onClick={() => {
               setIsSimulateModalOpen(true);
@@ -286,7 +316,7 @@ export default function AdminPaymentsPage() {
           <div className="font-serif text-2xl font-bold text-amber-700">
             {metrics.pendingCount}
           </div>
-          <p className="text-[11px] text-stone-500">Awaiting Selar webhook or approval</p>
+          <p className="text-[11px] text-stone-500">Auto-approved upon Selar confirmation</p>
         </div>
 
         <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm space-y-1">

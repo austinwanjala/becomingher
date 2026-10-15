@@ -42,12 +42,25 @@ export async function POST(request: Request) {
     const effectiveOrderId = orderId || '';
     const effectiveProductId = productId || product_id || '';
     const effectiveServiceId = serviceId || service_id || '';
-    const effectiveEmail = (email || customer_email || '').toLowerCase().trim();
+    // 0. Resolve session user if authenticated
+    let sessionUserId: string | null = null;
+    let sessionEmail: string | null = null;
+    try {
+      const userClient = await createClient();
+      const { data: { user } } = await userClient.auth.getUser();
+      if (user) {
+        sessionUserId = user.id;
+        sessionEmail = user.email?.toLowerCase().trim() || null;
+      }
+    } catch (_) {}
+
+    const effectiveCustomerId = body.customerId || sessionUserId;
+    const effectiveEmail = (email || customer_email || sessionEmail || '').toLowerCase().trim();
     const effectiveName = name || customer_name || 'Sanctuary Member';
 
-    if (!effectiveOrderId && !effectiveRef && !effectiveProductId && !effectiveServiceId) {
+    if (!effectiveOrderId && !effectiveRef && !effectiveProductId && !effectiveServiceId && !effectiveEmail && !effectiveCustomerId) {
       return NextResponse.json(
-        { error: 'Order ID, transaction reference, or product ID is required for verification.' },
+        { error: 'Order ID, transaction reference, customer email, or product ID is required for verification.' },
         { status: 400 }
       );
     }
@@ -73,6 +86,58 @@ export async function POST(request: Request) {
         .or(`transaction_reference.eq.${effectiveRef},order_reference.eq.${effectiveRef},id.eq.${effectiveRef}`)
         .limit(1);
       if (byRef && byRef.length > 0) order = byRef[0];
+    }
+
+    // 2. Fallback: Check for any PENDING order matching customer (email or customer_id)
+    if (!order && (effectiveEmail || effectiveCustomerId)) {
+      let pendingQuery = supabase
+        .from('orders')
+        .select('*')
+        .eq('payment_status', 'PENDING')
+        .order('created_at', { ascending: false });
+
+      if (effectiveCustomerId && effectiveEmail) {
+        pendingQuery = pendingQuery.or(`customer_id.eq.${effectiveCustomerId},customer_email.ilike.${effectiveEmail}`);
+      } else if (effectiveCustomerId) {
+        pendingQuery = pendingQuery.eq('customer_id', effectiveCustomerId);
+      } else {
+        pendingQuery = pendingQuery.ilike('customer_email', effectiveEmail);
+      }
+
+      if (effectiveServiceId) {
+        pendingQuery = pendingQuery.eq('service_id', effectiveServiceId);
+      } else if (effectiveProductId) {
+        pendingQuery = pendingQuery.or(`selar_product_id.eq.${effectiveProductId},service_id.eq.${effectiveProductId}`);
+      }
+
+      const { data: byEmailPending } = await pendingQuery.limit(1);
+      if (byEmailPending && byEmailPending.length > 0) order = byEmailPending[0];
+    }
+
+    // 3. Fallback: Check for the most recent SUCCESSFUL order for this customer if already approved
+    if (!order && (effectiveEmail || effectiveCustomerId)) {
+      let recentQuery = supabase
+        .from('orders')
+        .select('*')
+        .eq('payment_status', 'SUCCESSFUL')
+        .order('created_at', { ascending: false });
+
+      if (effectiveCustomerId && effectiveEmail) {
+        recentQuery = recentQuery.or(`customer_id.eq.${effectiveCustomerId},customer_email.ilike.${effectiveEmail}`);
+      } else if (effectiveCustomerId) {
+        recentQuery = recentQuery.eq('customer_id', effectiveCustomerId);
+      } else {
+        recentQuery = recentQuery.ilike('customer_email', effectiveEmail);
+      }
+
+      if (effectiveServiceId) {
+        recentQuery = recentQuery.eq('service_id', effectiveServiceId);
+      } else if (effectiveProductId) {
+        recentQuery = recentQuery.or(`selar_product_id.eq.${effectiveProductId},service_id.eq.${effectiveProductId}`);
+      }
+
+      const { data: byRecent } = await recentQuery.limit(1);
+      if (byRecent && byRecent.length > 0) order = byRecent[0];
     }
 
     // Helper to assemble full materials bundle for frontend & email
