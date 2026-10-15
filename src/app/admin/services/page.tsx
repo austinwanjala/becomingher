@@ -39,8 +39,8 @@ export default function AdminServicesPage() {
   const [duration, setDuration] = useState('6 Weeks');
   const [shortDesc, setShortDesc] = useState('');
   const [description, setDescription] = useState('');
-  const [selarProductId, setSelarProductId] = useState('v09683c927');
-  const [selarProductUrl, setSelarProductUrl] = useState('https://selar.com/v09683c927');
+  const [selarProductId, setSelarProductId] = useState('');
+  const [selarProductUrl, setSelarProductUrl] = useState('');
   const [pdfTitle, setPdfTitle] = useState('');
   const [pdfName, setPdfName] = useState('');
   const [pdfUrl, setPdfUrl] = useState('');
@@ -48,6 +48,9 @@ export default function AdminServicesPage() {
   const [questionnaireTemplateUrl, setQuestionnaireTemplateUrl] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [isFeatured, setIsFeatured] = useState(false);
+
+  // Status notification state
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Quick test email state
   const [testEmailRecipient, setTestEmailRecipient] = useState('');
@@ -179,6 +182,25 @@ export default function AdminServicesPage() {
     }
   };
 
+  const handleProductUrlChange = (url: string) => {
+    setSelarProductUrl(url);
+    try {
+      const clean = url.trim().split('?')[0].replace(/\/$/, '');
+      const id = clean.split('/').pop();
+      if (id && id.length > 2 && !id.startsWith('http')) {
+        setSelarProductId(id);
+      }
+    } catch (_) {}
+  };
+
+  const handleProductIdChange = (id: string) => {
+    const cleanId = id.trim();
+    setSelarProductId(cleanId);
+    if (cleanId && (!selarProductUrl || selarProductUrl.includes('v09683c927') || !selarProductUrl.includes(cleanId))) {
+      setSelarProductUrl(`https://selar.com/${cleanId}`);
+    }
+  };
+
   const startEdit = (srv: Service) => {
     setEditingService(srv);
     setName(srv.name);
@@ -189,8 +211,16 @@ export default function AdminServicesPage() {
     setDuration(srv.duration);
     setShortDesc(srv.short_description);
     setDescription(srv.description);
-    setSelarProductId(srv.selar_product_id || 'v09683c927');
-    setSelarProductUrl(srv.selar_product_url || 'https://selar.com/v09683c927');
+
+    const initialId = (srv.selar_product_id && srv.selar_product_id !== 'v09683c927')
+      ? srv.selar_product_id
+      : (srv.selar_product_url && !srv.selar_product_url.includes('v09683c927') ? srv.selar_product_url.split('?')[0].replace(/\/$/, '').split('/').pop() || '' : '');
+    const initialUrl = (srv.selar_product_url && !srv.selar_product_url.includes('v09683c927'))
+      ? srv.selar_product_url
+      : (initialId ? `https://selar.com/${initialId}` : '');
+
+    setSelarProductId(initialId);
+    setSelarProductUrl(initialUrl);
     setPdfTitle(srv.pdf_title || '');
     setPdfName(srv.pdf_name || '');
     setPdfUrl(srv.pdf_url || '');
@@ -211,8 +241,8 @@ export default function AdminServicesPage() {
     setDuration('4 Modules');
     setShortDesc('Transformative personal development offering.');
     setDescription('Comprehensive digital coaching journey.');
-    setSelarProductId('v09683c927');
-    setSelarProductUrl('https://selar.com/v09683c927');
+    setSelarProductId('');
+    setSelarProductUrl('');
     setPdfTitle('');
     setPdfName('');
     setPdfUrl('');
@@ -227,6 +257,22 @@ export default function AdminServicesPage() {
     e.preventDefault();
     setIsUploading(true); // Re-use isUploading as a general saving state
 
+    // Ensure product ID and URL are synchronized
+    let finalProductId = selarProductId.trim();
+    let finalProductUrl = selarProductUrl.trim();
+    if (finalProductUrl) {
+      try {
+        const cleanUrl = finalProductUrl.split('?')[0].replace(/\/$/, '');
+        const extracted = cleanUrl.split('/').pop();
+        if (extracted && (!finalProductId || finalProductId === 'v09683c927')) {
+          finalProductId = extracted;
+        }
+      } catch (_) {}
+    }
+    if (finalProductId && (!finalProductUrl || finalProductUrl.includes('v09683c927'))) {
+      finalProductUrl = `https://selar.com/${finalProductId}`;
+    }
+
     if (editingService) {
       // Update
       const srvToUpdate: Service = {
@@ -239,8 +285,8 @@ export default function AdminServicesPage() {
         duration,
         short_description: shortDesc,
         description,
-        selar_product_id: selarProductId,
-        selar_product_url: selarProductUrl,
+        selar_product_id: finalProductId,
+        selar_product_url: finalProductUrl,
         pdf_title: pdfTitle,
         pdf_name: pdfName,
         pdf_url: pdfUrl,
@@ -254,8 +300,19 @@ export default function AdminServicesPage() {
       const saved = await saveService(srvToUpdate);
       if (saved) {
         setServices(services.map((s) => s.id === saved.id ? saved : s));
-        store.addAuditLog('SERVICE_UPDATED', 'SERVICES', `Service ${name} updated with PDF fulfillment ${pdfName || 'materials'}`);
+        store.addAuditLog('SERVICE_UPDATED', 'SERVICES', `Service ${name} updated with Selar link ${finalProductUrl}`);
+        setNotification({
+          type: 'success',
+          message: `✓ Service "${name}" updated successfully! Selar product link (${finalProductUrl}) is now live on the frontend.`
+        });
+        setTimeout(() => setNotification(null), 7000);
         setEditingService(null);
+      } else {
+        setNotification({
+          type: 'error',
+          message: `✗ Failed to update service "${name}". Please check network/permissions.`
+        });
+        setTimeout(() => setNotification(null), 7000);
       }
     } else if (isCreating) {
       // Create new
@@ -271,8 +328,8 @@ export default function AdminServicesPage() {
         description,
         image_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=800',
         features: ['Comprehensive Guided Lessons', 'Reflection Inquiries', 'Companion Support'],
-        selar_product_id: selarProductId,
-        selar_product_url: selarProductUrl,
+        selar_product_id: finalProductId,
+        selar_product_url: finalProductUrl,
         pdf_title: pdfTitle,
         pdf_name: pdfName,
         pdf_url: pdfUrl,
@@ -286,8 +343,19 @@ export default function AdminServicesPage() {
       const saved = await saveService(newSrv);
       if (saved) {
         setServices([...services, saved]);
-        store.addAuditLog('SERVICE_CREATED', 'SERVICES', `New service ${name} created with Selar ID ${selarProductId}`);
+        store.addAuditLog('SERVICE_CREATED', 'SERVICES', `New service ${name} created with Selar ID ${finalProductId}`);
+        setNotification({
+          type: 'success',
+          message: `✓ New service "${name}" created with Selar link ${finalProductUrl}.`
+        });
+        setTimeout(() => setNotification(null), 7000);
         setIsCreating(false);
+      } else {
+        setNotification({
+          type: 'error',
+          message: `✗ Failed to create service "${name}". Please check network/permissions.`
+        });
+        setTimeout(() => setNotification(null), 7000);
       }
     }
     
@@ -367,6 +435,21 @@ export default function AdminServicesPage() {
 
   return (
     <div className="space-y-8">
+      {notification && (
+        <div className={`p-4 rounded-2xl border text-xs sm:text-sm font-medium flex items-center justify-between shadow-sm ${
+          notification.type === 'success'
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+            : 'bg-rose-50 border-rose-200 text-rose-900'
+        }`}>
+          <span>{notification.message}</span>
+          <button
+            onClick={() => setNotification(null)}
+            className="text-stone-400 hover:text-stone-700 ml-4 font-bold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-serif text-3xl font-semibold text-stone-900">
@@ -486,8 +569,18 @@ export default function AdminServicesPage() {
                       <span>Type: <code className="bg-stone-100 px-1.5 py-0.5 rounded font-mono text-stone-800">{srv.type}</code></span>
                       <span>Duration: <strong>{srv.duration}</strong></span>
                       <span>
-                        Selar Product ID: <code className="font-mono text-rose-900 font-semibold">{srv.selar_product_id || 'v09683c927'}</code>
+                        Selar Product ID: <code className="font-mono text-rose-900 font-semibold">{srv.selar_product_id || (srv.selar_product_url ? srv.selar_product_url.split('/').pop() : 'Not set')}</code>
                       </span>
+                      {srv.selar_product_url && (
+                        <a
+                          href={srv.selar_product_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-rose-900 hover:underline font-medium inline-flex items-center gap-1"
+                        >
+                          <span>Checkout Link ↗</span>
+                        </a>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -567,18 +660,17 @@ export default function AdminServicesPage() {
                   />
                 </div>
 
-                {type !== 'DIGITAL_PRODUCT' && (
-                  <div className="space-y-1.5">
-                    <label className="font-medium text-stone-700">Service Slug (URL)</label>
-                    <input
-                      type="text"
-                      required
-                      value={slug}
-                      onChange={(e) => setSlug(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-stone-300"
-                    />
-                  </div>
-                )}
+                <div className="space-y-1.5">
+                  <label className="font-medium text-stone-700">Service Slug (URL)</label>
+                  <input
+                    type="text"
+                    required
+                    value={slug}
+                    onChange={(e) => setSlug(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300"
+                    placeholder="e.g. companion-workbook"
+                  />
+                </div>
 
                 <div className="space-y-1.5">
                   <label className="font-medium text-stone-700">Service Access Type</label>
@@ -615,49 +707,57 @@ export default function AdminServicesPage() {
                   />
                 </div>
 
-                {type !== 'DIGITAL_PRODUCT' && (
-                  <div className="space-y-1.5 sm:col-span-2">
-                    <label className="font-medium text-stone-700">Duration / Schedule Description</label>
-                    <input
-                      type="text"
-                      value={duration}
-                      onChange={(e) => setDuration(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-stone-300"
-                      placeholder="e.g. 4 Modules (Self-Paced) or 60 Minutes Live Video"
-                    />
-                  </div>
-                )}
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="font-medium text-stone-700">Duration / Schedule / Format Description</label>
+                  <input
+                    type="text"
+                    value={duration}
+                    onChange={(e) => setDuration(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300"
+                    placeholder={
+                      type === 'DIGITAL_PRODUCT'
+                        ? 'e.g. Lifetime Access (PDF) or 142 Pages'
+                        : 'e.g. 4 Modules (Self-Paced) or 60 Minutes Live Video'
+                    }
+                  />
+                </div>
 
                 {/* Selar Product Mapping Section */}
-                {type !== 'DIGITAL_PRODUCT' && (
-                  <div className="sm:col-span-2 p-4 bg-rose-50/60 rounded-2xl border border-rose-200/80 space-y-3">
+                <div className="sm:col-span-2 p-4 bg-rose-50/60 rounded-2xl border border-rose-200/80 space-y-3">
+                  <div className="flex items-center justify-between">
                     <h4 className="font-serif font-semibold text-rose-950 text-sm">
                       Selar E-Commerce Product Configuration
                     </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="font-medium text-stone-700">Selar Product ID</label>
-                        <input
-                          type="text"
-                          value={selarProductId}
-                          onChange={(e) => setSelarProductId(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono text-xs bg-white"
-                          placeholder="e.g. v09683c927"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="font-medium text-stone-700">Selar Product Checkout URL</label>
-                        <input
-                          type="url"
-                          value={selarProductUrl}
-                          onChange={(e) => setSelarProductUrl(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono text-xs bg-white"
-                          placeholder="https://selar.com/v09683c927"
-                        />
-                      </div>
+                    <span className="text-[10px] font-medium text-rose-800 bg-rose-100/80 px-2 py-0.5 rounded-full">
+                      Required for Selar Checkout
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-stone-600">
+                    Connect this {type === 'DIGITAL_PRODUCT' ? 'digital product / PDF workbook' : 'service'} to its dedicated Selar product checkout link so buyers are charged the exact price.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="font-medium text-stone-700">Selar Product ID</label>
+                      <input
+                        type="text"
+                        value={selarProductId}
+                        onChange={(e) => handleProductIdChange(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono text-xs bg-white"
+                        placeholder="e.g. zo1155188k"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-medium text-stone-700">Selar Product Checkout URL</label>
+                      <input
+                        type="url"
+                        value={selarProductUrl}
+                        onChange={(e) => handleProductUrlChange(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono text-xs bg-white"
+                        placeholder="https://selar.com/zo1155188k"
+                      />
                     </div>
                   </div>
-                )}
+                </div>
 
                 {/* Service PDF Materials & Email Fulfillment Section */}
                 <div className="sm:col-span-2 p-4 bg-amber-50/70 rounded-2xl border border-amber-200/90 space-y-3">
@@ -818,29 +918,27 @@ export default function AdminServicesPage() {
                   </div>
                 )}
 
-                {type !== 'DIGITAL_PRODUCT' && (
-                  <>
-                    <div className="space-y-1.5 sm:col-span-2">
-                      <label className="font-medium text-stone-700">Short Summary</label>
-                      <textarea
-                        rows={2}
-                        value={shortDesc}
-                        onChange={(e) => setShortDesc(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-stone-300"
-                      />
-                    </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="font-medium text-stone-700">Short Summary</label>
+                  <textarea
+                    rows={2}
+                    value={shortDesc}
+                    onChange={(e) => setShortDesc(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300"
+                    placeholder="Short summary of this offering..."
+                  />
+                </div>
 
-                    <div className="space-y-1.5 sm:col-span-2">
-                      <label className="font-medium text-stone-700">Full Description</label>
-                      <textarea
-                        rows={3}
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-stone-300"
-                      />
-                    </div>
-                  </>
-                )}
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="font-medium text-stone-700">Full Description</label>
+                  <textarea
+                    rows={3}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300"
+                    placeholder="Comprehensive description..."
+                  />
+                </div>
 
                 <div className="sm:col-span-2 flex items-center gap-6 pt-2">
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -853,17 +951,15 @@ export default function AdminServicesPage() {
                     <span>Service is Published & Active</span>
                   </label>
 
-                  {type !== 'DIGITAL_PRODUCT' && (
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={isFeatured}
-                        onChange={(e) => setIsFeatured(e.target.checked)}
-                        className="rounded text-rose-950"
-                      />
-                      <span>Featured on Homepage</span>
-                    </label>
-                  )}
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isFeatured}
+                      onChange={(e) => setIsFeatured(e.target.checked)}
+                      className="rounded text-rose-950"
+                    />
+                    <span>Featured on Homepage</span>
+                  </label>
                 </div>
               </div>
 

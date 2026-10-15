@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import {
   Star,
+  Sparkles,
   ArrowRight,
   CheckCircle2,
   Calendar,
@@ -90,7 +91,7 @@ export default async function HomePage() {
                     <span>Instant Entitlement Unlock</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <Star className="w-4 h-4 text-amber-600" />
+                    <Sparkles className="w-4 h-4 text-amber-600" />
                     <span>Guided Reflection Sanctuary</span>
                   </div>
                 </div>
@@ -367,11 +368,6 @@ export default async function HomePage() {
                   className="bg-white p-7 rounded-2xl border border-stone-200/80 shadow-sm flex flex-col justify-between space-y-6"
                 >
                   <div className="space-y-4">
-                    <div className="flex text-amber-500">
-                      {[...Array(item.rating)].map((_, i) => (
-                        <Star key={i} className="w-4 h-4 fill-amber-400" />
-                      ))}
-                    </div>
                     <p className="text-xs sm:text-sm text-stone-700 italic leading-relaxed font-serif">
                       "{item.quote}"
                     </p>

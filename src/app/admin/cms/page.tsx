@@ -342,7 +342,7 @@ export default function AdminCMSPage() {
                 </div>
                 <p className="text-stone-600 italic leading-relaxed">"{test.quote}"</p>
                 <div className="flex justify-between items-center pt-2 border-t border-stone-100 text-[11px]">
-                  <span className="text-amber-500 font-bold">★★★★★</span>
+                  <span className="text-stone-400 font-medium">Verified Member Quote</span>
                   <button
                     onClick={() => {
                       const updated = testimonials.filter((t) => t.id !== test.id);

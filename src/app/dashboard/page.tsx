@@ -89,7 +89,8 @@ export default function DashboardOverviewPage() {
   }
 
   const activeEntitlements = entitlements.filter((e) => e.status === 'ACTIVE');
-  const upcomingBooking = bookings.find((b) => b.booking_status === 'CONFIRMED');
+  const upcomingBooking = bookings.find((b) => b.booking_status === 'CONFIRMED' && b.payment_status === 'SUCCESSFUL');
+  const pendingBooking = bookings.find((b) => b.payment_status !== 'SUCCESSFUL' || b.booking_status === 'PENDING_PAYMENT');
 
   return (
     <div className="space-y-8">
@@ -129,7 +130,11 @@ export default function DashboardOverviewPage() {
           </div>
           <p className="text-2xl font-serif font-bold text-stone-900">{bookings.length}</p>
           <span className="text-[11px] text-stone-500">
-            {upcomingBooking ? '1 Upcoming Confirmed' : 'No Scheduled Bookings'}
+            {upcomingBooking
+              ? '1 Upcoming Confirmed'
+              : pendingBooking
+              ? '1 Pending Payment'
+              : 'No Scheduled Bookings'}
           </span>
         </div>
 
@@ -320,6 +325,42 @@ export default function DashboardOverviewPage() {
                       <span>Join Google Meet</span>
                     </a>
                   )}
+                </div>
+              </div>
+            ) : pendingBooking ? (
+              <div className="p-5 rounded-2xl bg-amber-50/70 border border-amber-200/80 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-semibold text-amber-800 uppercase tracking-widest bg-amber-100 px-2 py-0.5 rounded">
+                      Payment Not Verified
+                    </span>
+                    <h4 className="font-serif text-base font-semibold text-stone-900">
+                      Coaching with {pendingBooking.coach_name}
+                    </h4>
+                    <div className="flex items-center gap-4 text-xs text-stone-600 pt-1">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5 text-rose-800" /> {pendingBooking.scheduled_date}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5 text-rose-800" /> {pendingBooking.start_time} - {pendingBooking.end_time} ({pendingBooking.timezone})
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/checkout/${pendingBooking.service_id || 'srv-interpersonal-03'}`}
+                      className="px-4 py-2 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-rose-950 transition shadow-sm text-center"
+                    >
+                      Complete Payment
+                    </Link>
+                    <Link
+                      href="/dashboard/sessions"
+                      className="px-4 py-2 rounded-xl border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition text-xs font-semibold shadow-sm text-center"
+                    >
+                      Manage / Delete
+                    </Link>
+                  </div>
                 </div>
               </div>
             ) : (

@@ -36,7 +36,7 @@ export default function AdminSettingsPage() {
     store.brand.admin_notification_email || 'hello@becomingher.co.ke'
   );
   const [selarStoreUrl, setSelarStoreUrl] = useState('https://selar.com/m/zipporah-karanja1-Selar');
-  const [defaultSelarProduct, setDefaultSelarProduct] = useState('v09683c927');
+  const [defaultSelarProduct, setDefaultSelarProduct] = useState('zo1155188k');
   const [holdMinutes, setHoldMinutes] = useState(15);
   const [aiTone, setAiTone] = useState('Empowering, warm, sovereign, question-driven');
   const [saved, setSaved] = useState(false);

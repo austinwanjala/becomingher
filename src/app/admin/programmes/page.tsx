@@ -107,6 +107,8 @@ export default function AdminProgrammesPage() {
   const [bookFileSize, setBookFileSize] = useState('8.4 MB');
   const [bookFileType, setBookFileType] = useState('PDF');
   const [bookFileUrl, setBookFileUrl] = useState('/materials/becoming-her-companion-workbook.pdf');
+  const [bookSelarProductId, setBookSelarProductId] = useState('');
+  const [bookSelarProductUrl, setBookSelarProductUrl] = useState('');
   
   useEffect(() => {
     if (programme?.book) {
@@ -119,6 +121,8 @@ export default function AdminProgrammesPage() {
       setBookFileSize(programme.book.file_size || '');
       setBookFileType(programme.book.file_type || 'PDF');
       setBookFileUrl(programme.book.file_url);
+      setBookSelarProductId(programme.book.selar_product_id || '');
+      setBookSelarProductUrl(programme.book.selar_product_url || '');
     }
   }, [programme?.book]);
 
@@ -182,6 +186,18 @@ export default function AdminProgrammesPage() {
       file_size: bookFileSize,
       file_type: bookFileType,
       file_url: bookFileUrl,
+      selar_product_id: (() => {
+        let id = bookSelarProductId.trim();
+        if ((!id || id === 'v09683c927') && bookSelarProductUrl) {
+          try {
+            const clean = bookSelarProductUrl.trim().split('?')[0].replace(/\/$/, '');
+            const ext = clean.split('/').pop();
+            if (ext) id = ext;
+          } catch (_) {}
+        }
+        return id || '19145490qv';
+      })(),
+      selar_product_url: bookSelarProductUrl.trim() || 'https://selar.com/19145490qv',
       is_published: true,
       uploaded_at: programme.book?.uploaded_at || new Date().toISOString()
     };
@@ -719,6 +735,18 @@ export default function AdminProgrammesPage() {
                 <span>Preview / Download Book</span>
               </a>
 
+              {programme.book.selar_product_url && (
+                <a
+                  href={programme.book.selar_product_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full px-3 py-1.5 rounded-xl border border-rose-200 bg-white text-rose-950 hover:bg-rose-50 transition text-[11px] font-medium flex items-center justify-center gap-1.5 shadow-sm text-center"
+                >
+                  <ExternalLink className="w-3 h-3 text-rose-700" />
+                  <span>View Selar Product Page ↗</span>
+                </a>
+              )}
+
               <button
                 type="button"
                 onClick={handleRemoveBook}
@@ -860,6 +888,59 @@ export default function AdminProgrammesPage() {
                   placeholder="Describe the exercises, reflection prompts, and weekly frameworks included in this workbook..."
                   className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 bg-white focus:outline-none focus:ring-2 focus:ring-rose-900"
                 />
+              </div>
+
+              {/* Selar Product Configuration for Standalone Workbook */}
+              <div className="sm:col-span-2 p-4 bg-white/90 rounded-2xl border border-rose-200/90 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h5 className="font-serif font-semibold text-rose-950 text-xs">
+                    Selar E-Commerce Product Configuration (Workbook / Digital Product)
+                  </h5>
+                  <span className="text-[10px] font-medium text-rose-800 bg-rose-100/80 px-2 py-0.5 rounded-full">
+                    Selar Product Link
+                  </span>
+                </div>
+                <p className="text-[11px] text-stone-600">
+                  Enter the dedicated Selar product link for customers purchasing this standalone workbook.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="font-medium text-stone-700 text-xs">Selar Product ID</label>
+                    <input
+                      type="text"
+                      value={bookSelarProductId}
+                      onChange={(e) => {
+                        const val = e.target.value.trim();
+                        setBookSelarProductId(val);
+                        if (val && (!bookSelarProductUrl || bookSelarProductUrl.includes('v09683c927'))) {
+                          setBookSelarProductUrl(`https://selar.com/${val}`);
+                        }
+                      }}
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono text-xs bg-white focus:outline-none focus:ring-2 focus:ring-rose-900"
+                      placeholder="e.g. 19145490qv"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-medium text-stone-700 text-xs">Selar Product Checkout URL</label>
+                    <input
+                      type="url"
+                      value={bookSelarProductUrl}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setBookSelarProductUrl(val);
+                        try {
+                          const clean = val.trim().split('?')[0].replace(/\/$/, '');
+                          const id = clean.split('/').pop();
+                          if (id && id.length > 2 && !id.startsWith('http')) {
+                            setBookSelarProductId(id);
+                          }
+                        } catch (_) {}
+                      }}
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono text-xs bg-white focus:outline-none focus:ring-2 focus:ring-rose-900"
+                      placeholder="https://selar.com/19145490qv"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 

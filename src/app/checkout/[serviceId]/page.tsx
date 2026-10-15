@@ -184,7 +184,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ serviceId: 
       if (data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
       } else {
-        router.push(`/payment/return?order_id=${data.orderId}&service_id=${service.id}`);
+        router.push(`/thank-you?order_id=${data.orderId}&service_id=${service.id}`);
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'An error occurred while processing checkout.');
@@ -413,7 +413,19 @@ export default function CheckoutPage({ params }: { params: Promise<{ serviceId: 
                     </div>
                   </div>
                   <span className="text-xs font-mono font-medium text-stone-600 bg-white px-2.5 py-1 rounded border border-stone-200">
-                    Product: {service.selar_product_id || 'v09683c927'}
+                    Product: {
+                      (service.selar_product_id && service.selar_product_id !== 'v09683c927')
+                        ? service.selar_product_id
+                        : (service.selar_product_url && !service.selar_product_url.includes('v09683c927')
+                            ? service.selar_product_url.split('?')[0].replace(/\/$/, '').split('/').pop()
+                            : (
+                                service.id === 'srv-guided-01' ? 'zo1155188k' :
+                                service.id === 'srv-custom-02' ? '817711788w' :
+                                service.id === 'srv-interpersonal-03' ? '8614x14141' :
+                                service.id === 'srv-book-04' ? '19145490qv' : 'zo1155188k'
+                              )
+                          )
+                    }
                   </span>
                 </div>
 

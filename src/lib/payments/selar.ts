@@ -2,10 +2,17 @@ import { PaymentProvider, CreateCheckoutParams, CheckoutResult, VerifyPaymentRes
 import { store } from '@/lib/store';
 import { getServiceById } from '@/lib/services';
 
+const SERVICE_FALLBACK_MAP: Record<string, { id: string; url: string }> = {
+  'srv-guided-01': { id: 'zo1155188k', url: 'https://selar.com/zo1155188k' },
+  'srv-custom-02': { id: '817711788w', url: 'https://selar.com/817711788w' },
+  'srv-interpersonal-03': { id: '8614x14141', url: 'https://selar.com/8614x14141' },
+  'srv-book-04': { id: '19145490qv', url: 'https://selar.com/19145490qv' }
+};
+
 export class SelarPaymentProvider implements PaymentProvider {
   public name = 'SELAR';
-  private defaultProductId = 'v09683c927';
-  private defaultProductUrl = 'https://selar.com/v09683c927';
+  private defaultProductId = 'zo1155188k';
+  private defaultProductUrl = 'https://selar.com/zo1155188k';
   private storeUrl = 'https://selar.com/m/zipporah-karanja1-Selar';
 
   /**
@@ -14,18 +21,38 @@ export class SelarPaymentProvider implements PaymentProvider {
    */
   public async createCheckout(params: CreateCheckoutParams): Promise<CheckoutResult> {
     const service = await getServiceById(params.serviceId);
-    const productId = service?.selar_product_id || this.defaultProductId;
-    let baseUrl = service?.selar_product_url || `https://selar.com/${productId}`;
+    const fallback = SERVICE_FALLBACK_MAP[params.serviceId];
+
+    let baseUrl = service?.selar_product_url;
+    if (!baseUrl || baseUrl.includes('v09683c927')) {
+      baseUrl = fallback?.url || `https://selar.com/${service?.selar_product_id || fallback?.id || this.defaultProductId}`;
+    }
+
+    // Extract product ID from URL or fallback
+    let productId = service?.selar_product_id;
+    if (!productId || productId === 'v09683c927') {
+      try {
+        const cleanUrl = baseUrl.split('?')[0].replace(/\/$/, '');
+        const lastSegment = cleanUrl.split('/').pop();
+        productId = lastSegment || fallback?.id || this.defaultProductId;
+      } catch {
+        productId = fallback?.id || this.defaultProductId;
+      }
+    }
 
     // Unique transaction reference for Becoming Her reconciliation
     const transactionRef = `BH_SELAR_${Date.now()}_${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
     // Construct checkout URL with parameters
     const url = new URL(baseUrl);
+    // Explicitly enforce target currency (KES) to prevent Selar defaulting to USD and causing M-Pesa "merchant does not support the currency" error
+    url.searchParams.set('currency', params.currency || service?.currency || 'KES');
     url.searchParams.set('name', params.customerName);
+    url.searchParams.set('fullname', params.customerName);
     url.searchParams.set('email', params.customerEmail);
     if (params.customerPhone) {
       url.searchParams.set('phone', params.customerPhone);
+      url.searchParams.set('mobile', params.customerPhone);
     }
     // Return destination to our verify/return page
     url.searchParams.set('redirect_url', params.returnUrl);

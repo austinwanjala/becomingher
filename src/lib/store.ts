@@ -67,8 +67,8 @@ class Store {
         'Lifetime Access & Progress Tracking Dashboard',
         'Official Becoming Her Completion Certificate'
       ],
-      selar_product_id: 'v09683c927',
-      selar_product_url: 'https://selar.com/v09683c927',
+      selar_product_id: 'zo1155188k',
+      selar_product_url: 'https://selar.com/zo1155188k',
       resources: [],
       created_at: new Date().toISOString()
     },
@@ -93,8 +93,8 @@ class Store {
         'Unlimited Reflective Dialogue & Daily Accountability',
         'Priority Access to Becoming Her Masterclasses'
       ],
-      selar_product_id: 'v09683c927',
-      selar_product_url: 'https://selar.com/v09683c927',
+      selar_product_id: '817711788w',
+      selar_product_url: 'https://selar.com/817711788w',
       questionnaire_template_url: 'https://ssspngdzadgjehinospw.supabase.co/storage/v1/object/public/materials/questionnaires/1789587626505-1b5ozx.docx',
       resources: [],
       created_at: new Date().toISOString()
@@ -120,8 +120,8 @@ class Store {
         'Post-Session Summary & Tailored Action Plan',
         '14 Days of Direct Email Support Follow-up'
       ],
-      selar_product_id: 'v09683c927',
-      selar_product_url: 'https://selar.com/v09683c927',
+      selar_product_id: '8614x14141',
+      selar_product_url: 'https://selar.com/8614x14141',
       resources: [],
       created_at: new Date().toISOString()
     },
@@ -132,7 +132,7 @@ class Store {
       name: 'Becoming Her Companion Workbook',
       short_description: 'The official guided digital workbook and reflection companion designed to help you unlock the woman you are becoming.',
       description: 'A transformative 142-page digital workbook packed with structured weekly inquiries, somatic embodiment practices, habit architecture matrices, and transformative journaling frameworks. Perfect for self-paced independent reflection.',
-      price: 500,
+      price: 1500,
       currency: 'KES',
       image_url: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=800',
       duration: 'Lifetime Access (PDF)',
@@ -145,8 +145,8 @@ class Store {
         'Somatic Embodiment Exercises',
         'Self-paced reflection journey'
       ],
-      selar_product_id: 'v09683c927', // Placeholder, update later
-      selar_product_url: 'https://selar.com/v09683c927', // Placeholder
+      selar_product_id: '19145490qv',
+      selar_product_url: 'https://selar.com/19145490qv',
       pdf_url: '/materials/becoming-her-companion-workbook.pdf',
       pdf_name: 'becoming-her-companion-workbook.pdf',
       pdf_title: 'Becoming Her Sacred Companion Workbook',
@@ -639,6 +639,19 @@ class Store {
     return this.services.find((s) => s.id === id || s.slug === id);
   }
 
+  public updateService(service: Service): void {
+    const idx = this.services.findIndex((s) => s.id === service.id);
+    if (idx !== -1) {
+      this.services[idx] = { ...this.services[idx], ...service };
+    } else {
+      this.services.push(service);
+    }
+  }
+
+  public deleteService(id: string): void {
+    this.services = this.services.filter((s) => s.id !== id);
+  }
+
   public getProgrammeByServiceId(serviceId: string): Programme | undefined {
     return this.programme.service_id === serviceId ? this.programme : undefined;
   }
@@ -745,6 +758,15 @@ class Store {
     booking.order_id = orderId;
     booking.meeting_link = `https://meet.google.com/bch-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 6)}`;
     return booking;
+  }
+
+  public deleteBooking(bookingId: string): boolean {
+    const idx = this.bookings.findIndex((b) => b.id === bookingId);
+    if (idx !== -1) {
+      this.bookings.splice(idx, 1);
+      return true;
+    }
+    return false;
   }
 
   public addAuditLog(action: string, resource: string, details: string, userEmail: string = 'admin@becomingher.co.ke'): void {
@@ -1155,6 +1177,8 @@ class Store {
         file_size: bookData.file_size || existing?.file_size || '5.2 MB',
         page_count: bookData.page_count ?? existing?.page_count ?? 120,
         file_type: bookData.file_type || existing?.file_type || 'PDF',
+        selar_product_id: bookData.selar_product_id || existing?.selar_product_id || '',
+        selar_product_url: bookData.selar_product_url || existing?.selar_product_url || '',
         uploaded_at: new Date().toISOString(),
         is_published: bookData.is_published ?? existing?.is_published ?? true
       };

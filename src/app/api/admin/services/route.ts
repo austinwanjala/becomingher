@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { store } from '@/lib/store';
+import { Service } from '@/types';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -14,11 +16,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Service data with valid ID is required.' }, { status: 400 });
     }
 
+    // Auto-extract and sync selar_product_id if URL is present and ID is empty or default
+    let normalizedService = { ...service };
+    if (normalizedService.selar_product_url) {
+      try {
+        const cleanUrl = normalizedService.selar_product_url.split('?')[0].replace(/\/$/, '');
+        const extractedId = cleanUrl.split('/').pop();
+        if (extractedId && (!normalizedService.selar_product_id || normalizedService.selar_product_id === 'v09683c927')) {
+          normalizedService.selar_product_id = extractedId;
+        }
+      } catch (_) {}
+    }
+
     const supabase = await createAdminClient();
     const { data, error } = await supabase
       .from('services')
       .upsert({
-        ...service,
+        ...normalizedService,
         updated_at: new Date().toISOString()
       }, { onConflict: 'id' })
       .select()
@@ -29,6 +43,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // Update in-memory store immediately
+    store.updateService(data as Service);
+
     try {
       revalidatePath('/', 'layout');
       revalidatePath('/services');
@@ -37,6 +54,18 @@ export async function POST(request: Request) {
       revalidatePath('/services/interpersonal-coaching');
       revalidatePath('/services/custom-coaching');
       revalidatePath('/pricing');
+      revalidatePath('/checkout/[serviceId]', 'page');
+      revalidatePath(`/checkout/${normalizedService.id}`);
+      if (normalizedService.slug) {
+        revalidatePath(`/checkout/${normalizedService.slug}`);
+        revalidatePath(`/services/${normalizedService.slug}`);
+      }
+      revalidatePath('/checkout/srv-guided-01');
+      revalidatePath('/checkout/srv-custom-02');
+      revalidatePath('/checkout/srv-interpersonal-03');
+      revalidatePath('/checkout/srv-book-04');
+      revalidatePath('/dashboard');
+      revalidatePath('/admin/services');
       revalidatePath('/');
     } catch (e) {
       console.warn('revalidatePath notice:', e);
@@ -75,6 +104,8 @@ export async function DELETE(request: Request) {
       console.error('Error deleting service:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    store.deleteService(id);
 
     try {
       revalidatePath('/', 'layout');

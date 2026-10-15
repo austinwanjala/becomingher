@@ -133,7 +133,12 @@ export async function POST(request: Request) {
       customer_email: effectiveCustomerEmail,
       service_id: service.id,
       service_name: service.name,
-      selar_product_id: service.selar_product_id || 'v09683c927',
+      selar_product_id: (service.selar_product_id && service.selar_product_id !== 'v09683c927')
+        ? service.selar_product_id
+        : (service.selar_product_url && !service.selar_product_url.includes('v09683c927')
+            ? service.selar_product_url.split('?')[0].replace(/\/$/, '').split('/').pop() || 'zo1155188k'
+            : (service.id === 'srv-guided-01' ? 'zo1155188k' : service.id === 'srv-custom-02' ? '817711788w' : service.id === 'srv-interpersonal-03' ? '8614x14141' : service.id === 'srv-book-04' ? '19145490qv' : 'zo1155188k')
+          ),
       payment_provider: 'SELAR' as const,
       payment_status: 'PENDING' as const,
       transaction_reference: '',
@@ -154,7 +159,7 @@ export async function POST(request: Request) {
 
     // Calculate absolute base URL
     const origin = request.headers.get('origin') || 'http://localhost:3000';
-    const returnUrl = `${origin}/payment/return?order_id=${orderId}&service_id=${service.id}`;
+    const returnUrl = `${origin}/thank-you?order_id=${orderId}&service_id=${service.id}`;
 
     // Generate checkout via Selar
     const checkout = await selarProvider.createCheckout({

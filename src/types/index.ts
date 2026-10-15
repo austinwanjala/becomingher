@@ -183,6 +183,8 @@ export interface ProgrammeBook {
   file_size?: string;
   page_count?: number;
   file_type?: string;
+  selar_product_id?: string;
+  selar_product_url?: string;
   uploaded_at: string;
   is_published: boolean;
 }
@@ -302,7 +304,7 @@ export interface Testimonial {
   quote: string;
   avatar_url: string;
   programme_name: string;
-  rating: number;
+  rating?: number;
   is_published: boolean;
 }
 

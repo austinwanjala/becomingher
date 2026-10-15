@@ -228,7 +228,7 @@ export default async function AdminOverviewPage() {
                     </span>
                   </div>
                   <div className="flex justify-between text-[11px] text-stone-500">
-                    <span>Selar ID: <code className="font-mono text-rose-900">{s.selar_product_id || 'v09683c927'}</code></span>
+                    <span>Selar ID: <code className="font-mono text-rose-900">{s.selar_product_id || (s.selar_product_url ? s.selar_product_url.split('/').pop() : 'Not set')}</code></span>
                     <span className="text-emerald-700">Active</span>
                   </div>
                 </div>

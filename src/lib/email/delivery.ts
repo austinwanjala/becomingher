@@ -48,10 +48,55 @@ export interface EmailDeliveryResult {
 export async function resolveServicePdf(serviceId: string): Promise<{ url: string; name: string; title: string } | null> {
   const service = await getServiceById(serviceId);
   
-  if (service?.pdf_url && !service.pdf_url.includes('becoming-her-companion-workbook.pdf') && !service.pdf_url.includes('new-service-materials.pdf')) {
+  // 1. If service has a direct cloud storage PDF URL (not a dummy placeholder)
+  if (service?.pdf_url && !service.pdf_url.includes('new-service-materials.pdf') && service.pdf_url.startsWith('http')) {
     return {
       url: service.pdf_url,
-      name: service.pdf_name || `${service.slug}-materials.pdf`,
+      name: service.pdf_name || `${service.slug || service.id}-materials.pdf`,
+      title: service.pdf_title || `${service.name} Materials`
+    };
+  }
+
+  // 2. Check programme companion book from programmes table
+  try {
+    const adminSupabase = await createAdminClient();
+    const { data: progData } = await adminSupabase
+      .from('programmes')
+      .select('book')
+      .or(`service_id.eq.${serviceId},id.eq.${serviceId}`)
+      .limit(1);
+
+    const book = progData?.[0]?.book;
+    if (book?.file_url && book.file_url.startsWith('http')) {
+      return {
+        url: book.file_url,
+        name: book.file_name || `${book.title || 'programme-book'}.pdf`,
+        title: book.title || 'Sacred Companion Workbook'
+      };
+    }
+  } catch (err) {
+    console.warn('Could not query programmes table for book:', err);
+  }
+
+  // 3. Check if service.resources has a PDF file
+  if (service?.resources && service.resources.length > 0) {
+    const pdfRes = service.resources.find(
+      (r) => r.file_type === 'PDF' || r.file_name?.toLowerCase().endsWith('.pdf') || r.file_url?.toLowerCase().endsWith('.pdf')
+    );
+    if (pdfRes && pdfRes.file_url) {
+      return {
+        url: pdfRes.file_url,
+        name: pdfRes.file_name || `${pdfRes.title}.pdf`,
+        title: pdfRes.title || 'Service Workbook'
+      };
+    }
+  }
+
+  // 4. Fallback to local service pdf_url if present
+  if (service?.pdf_url && !service.pdf_url.includes('new-service-materials.pdf')) {
+    return {
+      url: service.pdf_url,
+      name: service.pdf_name || `${service.slug || service.id}-materials.pdf`,
       title: service.pdf_title || `${service.name} Materials`
     };
   }
@@ -467,7 +512,7 @@ export async function sendServicePdfEmail(params: SendServicePdfEmailParams): Pr
         });
       }
 
-      const res = await fetch('https://api.resend.com/emails', {
+      let res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${resendApiKey}`,
@@ -476,7 +521,22 @@ export async function sendServicePdfEmail(params: SendServicePdfEmailParams): Pr
         body: JSON.stringify(emailPayload)
       });
 
-      const data = await res.json();
+      let data = await res.json();
+
+      // If domain verification failed on custom from address, fallback to onboarding@resend.dev
+      if (!res.ok && (data?.message?.toLowerCase().includes('not verified') || data?.message?.toLowerCase().includes('validation_error')) && emailPayload.from !== 'Becoming Her <onboarding@resend.dev>') {
+        console.warn(`[EMAIL_DISPATCH] Resend custom domain rejected "${emailPayload.from}". Retrying with onboarding@resend.dev fallback...`);
+        emailPayload.from = 'Becoming Her <onboarding@resend.dev>';
+        res = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${resendApiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(emailPayload)
+        });
+        data = await res.json();
+      }
 
       if (!res.ok) {
         throw new Error(data.message || data.error || 'Resend email dispatch error');
@@ -934,7 +994,7 @@ export async function sendAdminOrderNotificationEmail(
 
   if (resendApiKey) {
     try {
-      const res = await fetch('https://api.resend.com/emails', {
+      let res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${resendApiKey}`,
@@ -948,7 +1008,48 @@ export async function sendAdminOrderNotificationEmail(
         })
       });
 
-      const data = await res.json();
+      let data = await res.json();
+
+      // If custom domain is not verified, retry with onboarding@resend.dev
+      if (!res.ok && (data?.message?.toLowerCase().includes('not verified') || data?.message?.toLowerCase().includes('validation_error')) && emailFrom !== 'Becoming Her <onboarding@resend.dev>') {
+        console.warn('[ADMIN_EMAIL] Resend custom domain rejected. Retrying with onboarding@resend.dev...');
+        res = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${resendApiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from: 'Becoming Her <onboarding@resend.dev>',
+            to: recipients,
+            subject,
+            html: htmlContent
+          })
+        });
+        data = await res.json();
+      }
+
+      // If rejected because in test mode only owner email is allowed, deliver directly to verified owner
+      if (!res.ok && data?.message?.includes('testing emails to your own email address')) {
+        const match = data.message.match(/\(([^)]+)\)/);
+        const allowedEmail = match ? match[1] : 'wanjalaaustine819@gmail.com';
+        console.warn(`[ADMIN_EMAIL] Resend test restriction: sending alert directly to ${allowedEmail}`);
+        res = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${resendApiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from: 'Becoming Her <onboarding@resend.dev>',
+            to: [allowedEmail],
+            subject: `[ADMIN ALERT] ${subject}`,
+            html: htmlContent
+          })
+        });
+        data = await res.json();
+      }
+
       if (!res.ok) {
         throw new Error(data.message || data.error || 'Resend admin notification error');
       }

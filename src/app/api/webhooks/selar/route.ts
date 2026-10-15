@@ -4,6 +4,7 @@ import { store } from '@/lib/store';
 import { createAdminClient } from '@/utils/supabase/server';
 import { sendServicePdfEmail, sendAdminOrderNotificationEmail } from '@/lib/email/delivery';
 import { sendWhatsAppPostPaymentConfirmation } from '@/lib/whatsapp/notifications';
+import { getServiceBySelarProductId } from '@/lib/services';
 
 export async function POST(request: Request) {
   try {
@@ -109,6 +110,7 @@ export async function POST(request: Request) {
     // If order was created directly on Selar (external checkout), map to our service
     if (result.status === 'SUCCESSFUL') {
       const matchedService =
+        (await getServiceBySelarProductId(result.selarProductId || '')) ||
         store.services.find((s) => s.selar_product_id === result.selarProductId) ||
         store.services[0];
 
