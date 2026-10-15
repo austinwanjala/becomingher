@@ -28,7 +28,6 @@ export default async function HomePage() {
     getServices()
   ]);
   const services = dbServices && dbServices.length > 0 ? dbServices : store.getServices();
-  const testimonials = store.testimonials.filter((t) => t.is_published);
   const faqs = store.faqs.filter((f) => f.is_published);
 
   return (
@@ -349,49 +348,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* 5. TESTIMONIALS */}
-        <section className="py-20 bg-[#FAF8F5] border-t border-stone-200/60">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center max-w-2xl mx-auto space-y-3 mb-16">
-              <span className="text-xs uppercase tracking-widest text-rose-800 font-semibold">
-                Voices of Sisterhood
-              </span>
-              <h2 className="font-serif text-3xl sm:text-4xl text-stone-900 font-semibold tracking-tight">
-                Transformations from Women Becoming
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {testimonials.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-white p-7 rounded-2xl border border-stone-200/80 shadow-sm flex flex-col justify-between space-y-6"
-                >
-                  <div className="space-y-4">
-                    <p className="text-xs sm:text-sm text-stone-700 italic leading-relaxed font-serif">
-                      "{item.quote}"
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-3 pt-4 border-t border-stone-100">
-                    <img
-                      src={item.avatar_url}
-                      alt={item.name}
-                      className="w-10 h-10 rounded-full object-cover border border-stone-200"
-                    />
-                    <div>
-                      <h4 className="text-xs font-semibold text-stone-900">{item.name}</h4>
-                      <p className="text-[11px] text-stone-500">{item.role}</p>
-                      <p className="text-[10px] text-rose-800 font-medium">{item.programme_name}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* 6. FAQ SECTION */}
+        {/* 5. FAQ SECTION */}
         <section className="py-20 bg-white border-t border-stone-200/60">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center space-y-3 mb-14">
@@ -421,7 +378,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* 7. FINAL CTA */}
+        {/* 6. FINAL CTA */}
         <section className="py-20 bg-gradient-to-r from-stone-900 via-rose-950 to-stone-900 text-white relative overflow-hidden text-center">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-900/60 border border-rose-700/60 text-amber-200 text-xs font-medium">
