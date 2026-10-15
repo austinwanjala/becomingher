@@ -59,9 +59,24 @@ export async function updateSession(request: NextRequest) {
                 headers: requestHeaders,
               },
             });
-            cookiesToSet.forEach(({ name, value, options }) =>
-              supabaseResponse.cookies.set(name, value, options)
-            );
+            cookiesToSet.forEach(({ name, value, options }) => {
+              const isDeletion = !value || options?.maxAge === 0;
+              if (isDeletion) {
+                supabaseResponse.cookies.set(name, value, {
+                  ...options,
+                  maxAge: 0,
+                  expires: new Date(0),
+                });
+              } else {
+                const { maxAge, expires, ...sessionOptions } = options || {};
+                supabaseResponse.cookies.set(name, value, {
+                  ...sessionOptions,
+                  sameSite: sessionOptions.sameSite || 'lax',
+                  path: sessionOptions.path || '/',
+                  secure: process.env.NODE_ENV === 'production',
+                });
+              }
+            });
           },
         },
       }
@@ -80,16 +95,7 @@ export async function updateSession(request: NextRequest) {
     // 1. Role-Based Admin route protection
     if (request.nextUrl.pathname.startsWith('/admin')) {
       if (request.nextUrl.pathname === '/admin/login') {
-        if (user) {
-          try {
-            const role = await getUserRole(user, supabase);
-            if (isAdminRole(role)) {
-              const url = request.nextUrl.clone();
-              url.pathname = '/admin';
-              return NextResponse.redirect(url);
-            }
-          } catch (_) {}
-        }
+        // Allow the administrative login page to render directly
         return supabaseResponse;
       }
 

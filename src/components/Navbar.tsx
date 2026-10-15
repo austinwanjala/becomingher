@@ -17,13 +17,23 @@ export function Navbar() {
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
+      const hasActive = typeof window !== 'undefined' && sessionStorage.getItem('bh_session_active') === 'true';
+      if (user && hasActive) {
+        setUser(user);
+      } else {
+        setUser(null);
+      }
     });
 
     const {
       data: { subscription }
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      const hasActive = typeof window !== 'undefined' && sessionStorage.getItem('bh_session_active') === 'true';
+      if (session?.user && (hasActive || event === 'SIGNED_IN')) {
+        setUser(session.user);
+      } else {
+        setUser(null);
+      }
     });
 
     const handleAuthEvent = (e: CustomEvent) => {

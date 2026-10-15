@@ -48,9 +48,25 @@ export async function createClient() {
         },
         setAll(cookiesToSet) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
+            cookiesToSet.forEach(({ name, value, options }) => {
+              const isDeletion = !value || options?.maxAge === 0;
+              if (isDeletion) {
+                cookieStore.set(name, value, {
+                  ...options,
+                  maxAge: 0,
+                  expires: new Date(0),
+                });
+              } else {
+                // True Session Cookie: omit maxAge and expires so browser removes them on app closure
+                const { maxAge, expires, ...sessionOptions } = options || {};
+                cookieStore.set(name, value, {
+                  ...sessionOptions,
+                  sameSite: sessionOptions.sameSite || 'lax',
+                  path: sessionOptions.path || '/',
+                  secure: process.env.NODE_ENV === 'production',
+                });
+              }
+            });
           } catch {
             // The `setAll` method was called from a Server Component.
             // This can be ignored if you have middleware refreshing

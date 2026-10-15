@@ -68,7 +68,16 @@ export default function AdminLoginPage({
               </div>
             )}
 
-            <form action={adminLogin} onSubmit={() => setSubmitting(true)} className="space-y-4">
+            <form
+              action={adminLogin}
+              onSubmit={() => {
+                try {
+                  sessionStorage.setItem('bh_session_active', 'true');
+                } catch (_) {}
+                setSubmitting(true);
+              }}
+              className="space-y-4"
+            >
               <input type="hidden" name="redirect" value={redirectTarget} />
 
               <div className="space-y-1.5">

@@ -1,16 +1,10 @@
 import type { Metadata } from 'next';
-import { login } from './actions';
+import { LoginForm } from '@/components/LoginForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Gem, AlertCircle, ArrowLeft } from 'lucide-react';
+import { AlertCircle, ArrowLeft } from 'lucide-react';
 import { BrandLogo } from '@/components/BrandLogo';
 import { CleanBrowserUrl } from '@/components/CleanBrowserUrl';
-
-import { redirect } from 'next/navigation';
-import { createClient } from '@/utils/supabase/server';
 
 export const metadata: Metadata = {
   title: 'Sign In | Becoming Her',
@@ -29,15 +23,6 @@ export default async function LoginPage({
   // Strictly isolate customer portal: /login must never redirect into /admin
   const rawRedirect = params.redirect || '/dashboard';
   const redirectTarget = rawRedirect.startsWith('/admin') ? '/dashboard' : rawRedirect;
-
-  // If user is already authenticated and didn't arrive via an explicit message/sign-out, redirect to target
-  if (!rawMessage) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      redirect(redirectTarget);
-    }
-  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#FAF8F5] p-4 text-stone-900 relative">
@@ -78,52 +63,7 @@ export default async function LoginPage({
               </div>
             )}
 
-            <form action={login} className="space-y-4">
-              <input type="hidden" name="redirect" value={redirectTarget} />
-
-              <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-xs font-semibold text-stone-700">
-                  Email Address
-                </Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="grace.mwangi@gmail.com"
-                  className="rounded-xl border-stone-200 focus-visible:ring-rose-900 text-sm"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password" className="text-xs font-semibold text-stone-700">
-                    Password
-                  </Label>
-                  <Link
-                    href="/forgot-password"
-                    className="text-xs text-stone-500 hover:text-rose-900 transition"
-                  >
-                    Forgot password?
-                  </Link>
-                </div>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  placeholder="••••••••"
-                  className="rounded-xl border-stone-200 focus-visible:ring-rose-900 text-sm"
-                  required
-                />
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full py-3 rounded-xl bg-stone-900 hover:bg-rose-950 text-amber-50 text-xs font-semibold transition shadow"
-              >
-                Sign In & Continue
-              </Button>
-            </form>
+            <LoginForm redirectTarget={redirectTarget} />
 
             <div className="pt-4 border-t border-stone-100 text-center text-xs text-stone-600">
               Don&apos;t have an account yet?{' '}

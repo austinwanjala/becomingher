@@ -28,6 +28,9 @@ export function RegisterForm({
     <form
       action={async (formData: FormData) => {
         if (!isDisclaimerAccepted) return;
+        try {
+          sessionStorage.setItem('bh_session_active', 'true');
+        } catch (_) {}
         setIsSubmitting(true);
         await signup(formData);
       }}
